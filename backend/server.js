@@ -27,15 +27,20 @@ app.use(
       if (!origin) return callback(null, true);
 
       if (allowedOrigins.includes(origin)) {
+        console.log(`✅ CORS allowed for origin: ${origin}`);
         callback(null, true);
       } else {
         console.warn(`❌ CORS blocked for origin: ${origin}`);
+        console.log(`Allowed origins:`, allowedOrigins);
         callback(new Error("Not allowed by CORS"));
       }
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
+    exposedHeaders: ["Content-Length", "X-Content-Type-Options"],
+    preflightContinue: false,
+    optionsSuccessStatus: 204
   })
 );
 
