@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zeyobron Backend Test</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #fff;
+        }
+        .test-section {
+            background: #2a2a2a;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            border: 1px solid #444;
+        }
+        button {
+            background: #e50914;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        button:hover {
+            background: #f40612;
+        }
+        .success {
+            color: #4ade80;
+        }
+        .error {
+            color: #f87171;
+        }
+        .info {
+            color: #60a5fa;
+        }
+        pre {
+            background: #1a1a1a;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            border: 1px solid #444;
+        }
+        input {
+            background: #1a1a1a;
+            border: 1px solid #444;
+            color: #fff;
+            padding: 8px 12px;
+            border-radius: 4px;
+            width: 100%;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Zeyobron Backend API Tester</h1>
+    <p class="info">Test your backend API to diagnose CORS and connection issues</p>
+
+    <!-- Backend URL Input -->
+    <div class="test-section">
+        <h2>Backend Configuration</h2>
+        <label>Backend URL:</label>
+        <input type="text" id="backendUrl" value="https://hansitha-web-storefront.onrender.com" placeholder="https://your-backend.onrender.com">
+        <p style="font-size: 14px; color: #999;">Enter your Render backend URL (without /api)</p>
+    </div>
+
+    <!-- Test 1: Health Check -->
+    <div class="test-section">
+        <h2>Test 1: Health Check</h2>
+        <p>Check if backend is running and responding</p>
+        <button onclick="testHealth()">🏥 Test Health Endpoint</button>
+        <div id="healthResult"></div>
+    </div>
+
+    <!-- Test 2: Movies Endpoint -->
+    <div class="test-section">
+        <h2>Test 2: Movies API</h2>
+        <p>Test if movies endpoint returns data</p>
+        <button onclick="testMovies()">🎬 Test Movies Endpoint</button>
+        <div id="moviesResult"></div>
+    </div>
+
+    <!-- Test 3: CORS Check -->
+    <div class="test-section">
+        <h2>Test 3: CORS Headers</h2>
+        <p>Check if CORS headers are properly set</p>
+        <button onclick="testCORS()">🔒 Test CORS</button>
+        <div id="corsResult"></div>
+    </div>
+
+    <!-- Test 4: Categories -->
+    <div class="test-section">
+        <h2>Test 4: Categories API</h2>
+        <p>Test if categories endpoint returns data</p>
+        <button onclick="testCategories()">📁 Test Categories Endpoint</button>
+        <div id="categoriesResult"></div>
+    </div>
+
+    <!-- Test 5: Full API Test -->
+    <div class="test-section">
+        <h2>Test All Endpoints</h2>
+        <button onclick="testAll()">🚀 Run All Tests</button>
+        <div id="allResults"></div>
+    </div>
+
+    <script>
+        function getBackendUrl() {
+            return document.getElementById('backendUrl').value.trim();
+        }
+
+        async function testHealth() {
+            const resultDiv = document.getElementById('healthResult');
+            resultDiv.innerHTML = '<p class="info">Testing...</p>';
+            
+            try {
+                const response = await fetch(`${getBackendUrl()}/api/health`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <p class="success">✅ Success! Backend is running</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `<p class="error">❌ Error: ${response.status} ${response.statusText}</p>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <p class="error">❌ Failed to connect to backend</p>
+                    <p>Error: ${error.message}</p>
+                    <p>Possible causes:</p>
+                    <ul>
+                        <li>Backend is not running</li>
+                        <li>Wrong URL</li>
+                        <li>CORS blocking the request</li>
+                        <li>Backend is sleeping (free tier)</li>
+                    </ul>
+                `;
+            }
+        }
+
+        async function testMovies() {
+            const resultDiv = document.getElementById('moviesResult');
+            resultDiv.innerHTML = '<p class="info">Testing...</p>';
+            
+            try {
+                const response = await fetch(`${getBackendUrl()}/api/movies`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <p class="success">✅ Success! Movies endpoint works</p>
+                        <p>Found ${data.length} movies</p>
+                        <pre>${JSON.stringify(data.slice(0, 2), null, 2)}${data.length > 2 ? '\n... and more' : ''}</pre>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `<p class="error">❌ Error: ${response.status} ${response.statusText}</p>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <p class="error">❌ Failed to fetch movies</p>
+                    <p>Error: ${error.message}</p>
+                    ${error.message.includes('CORS') ? '<p class="error">🔒 CORS Error detected!</p>' : ''}
+                `;
+            }
+        }
+
+        async function testCategories() {
+            const resultDiv = document.getElementById('categoriesResult');
+            resultDiv.innerHTML = '<p class="info">Testing...</p>';
+            
+            try {
+                const response = await fetch(`${getBackendUrl()}/api/categories`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <p class="success">✅ Success! Categories endpoint works</p>
+                        <p>Found ${data.length} categories</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `<p class="error">❌ Error: ${response.status} ${response.statusText}</p>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <p class="error">❌ Failed to fetch categories</p>
+                    <p>Error: ${error.message}</p>
+                `;
+            }
+        }
+
+        async function testCORS() {
+            const resultDiv = document.getElementById('corsResult');
+            resultDiv.innerHTML = '<p class="info">Testing CORS headers...</p>';
+            
+            try {
+                const response = await fetch(`${getBackendUrl()}/api/health`);
+                
+                const corsHeaders = {
+                    'Access-Control-Allow-Origin': response.headers.get('Access-Control-Allow-Origin'),
+                    'Access-Control-Allow-Credentials': response.headers.get('Access-Control-Allow-Credentials'),
+                    'Access-Control-Allow-Methods': response.headers.get('Access-Control-Allow-Methods'),
+                };
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <p class="success">✅ Request successful</p>
+                        <p class="info">CORS Headers:</p>
+                        <pre>${JSON.stringify(corsHeaders, null, 2)}</pre>
+                        ${corsHeaders['Access-Control-Allow-Origin'] ? 
+                            '<p class="success">✅ CORS headers present</p>' : 
+                            '<p class="error">⚠️ No CORS headers found</p>'}
+                    `;
+                } else {
+                    resultDiv.innerHTML = `<p class="error">❌ Request failed: ${response.status}</p>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <p class="error">❌ CORS test failed</p>
+                    <p>Error: ${error.message}</p>
+                    <p class="error">This usually means CORS is blocking the request</p>
+                `;
+            }
+        }
+
+        async function testAll() {
+            const resultDiv = document.getElementById('allResults');
+            resultDiv.innerHTML = '<p class="info">Running all tests...</p>';
+            
+            const tests = [
+                { name: 'Health Check', fn: testHealth },
+                { name: 'Movies API', fn: testMovies },
+                { name: 'Categories API', fn: testCategories },
+                { name: 'CORS Headers', fn: testCORS }
+            ];
+            
+            for (const test of tests) {
+                await test.fn();
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+            
+            resultDiv.innerHTML = '<p class="success">✅ All tests completed! Check results above.</p>';
+        }
+
+        // Auto-test on page load
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                console.log('Auto-testing health endpoint...');
+                testHealth();
+            }, 500);
+        });
+    </script>
+</body>
+</html>
