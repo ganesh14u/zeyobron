@@ -7,7 +7,6 @@ export default function Login() {
   const navigate = useNavigate();
   const notify = useNotification();
   const [isSignUp, setIsSignUp] = useState(false);
-  const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -16,8 +15,6 @@ export default function Login() {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [resetEmail, setResetEmail] = useState('');
-  const [resetMessage, setResetMessage] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -43,91 +40,6 @@ export default function Login() {
       setLoading(false);
     }
   };
-
-  const handleForgotPassword = async (e) => {
-    e.preventDefault();
-    setError('');
-    setResetMessage('');
-    setLoading(true);
-
-    try {
-      const response = await axios.post(
-        `${import.meta.env.VITE_API_URL}/auth/forgot-password`,
-        { email: resetEmail }
-      );
-      setResetMessage(response.data.message);
-      // In development, show the reset URL
-      if (response.data.resetUrl) {
-        notify(`Reset link: ${response.data.resetUrl}`, 'info');
-      }
-    } catch (err) {
-      setError(err.response?.data?.message || 'An error occurred');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (showForgotPassword) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-black bg-cover bg-center relative"
-        style={{ backgroundImage: 'url(https://assets.nflxext.com/ffe/siteui/vlv3/9f46b569-aff7-4975-9b8e-3212e4637f16/453ba2a1-6138-4e3c-9a06-b66f9a2832e4/IN-en-20240415-popsignuptwoweeks-perspective_alpha_website_large.jpg)' }}>
-        
-        <div className="absolute inset-0 bg-black/60"></div>
-        
-        <div className="relative z-10 w-full max-w-md p-8">
-          <div className="bg-black/75 rounded px-16 py-12">
-            <h1 className="text-3xl font-bold mb-8">Reset Password</h1>
-            
-            {resetMessage && (
-              <div className="mb-4 p-3 bg-green-600 rounded text-sm">
-                {resetMessage}
-              </div>
-            )}
-            
-            {error && (
-              <div className="mb-4 p-3 bg-red-600 rounded text-sm">
-                {error}
-              </div>
-            )}
-            
-            <form onSubmit={handleForgotPassword}>
-              <div className="mb-4">
-                <input
-                  type="email"
-                  placeholder="Email"
-                  value={resetEmail}
-                  onChange={(e) => setResetEmail(e.target.value)}
-                  className="w-full px-4 py-3 rounded bg-gray-700 border border-gray-600 focus:outline-none focus:border-white"
-                  required
-                />
-              </div>
-              
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full py-3 bg-red-600 hover:bg-red-700 rounded font-semibold disabled:opacity-50"
-              >
-                {loading ? 'Sending...' : 'Send Reset Link'}
-              </button>
-            </form>
-            
-            <div className="mt-6 text-center">
-              <button
-                onClick={() => {
-                  setShowForgotPassword(false);
-                  setError('');
-                  setResetMessage('');
-                }}
-                className="text-gray-400 hover:text-white"
-              >
-                ← Back to Sign In
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-black bg-cover bg-center relative"
@@ -216,7 +128,7 @@ export default function Login() {
                 </label>
                 <button
                   type="button"
-                  onClick={() => setShowForgotPassword(true)}
+                  onClick={() => navigate('/forgot-password')}
                   className="text-sm text-gray-400 hover:text-white"
                 >
                   Forgot password?
@@ -253,10 +165,6 @@ export default function Login() {
                 </button>
               </div>
             )}
-          </div>
-          
-          <div className="mt-4 text-xs text-gray-500">
-            This page is protected by reCAPTCHA and the Google Privacy Policy.
           </div>
         </div>
       </div>

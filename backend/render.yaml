@@ -14,5 +14,9 @@ services:
         sync: false
       - key: CLIENT_URL
         sync: false
+      - key: EMAIL_USER
+        sync: false
+      - key: EMAIL_PASS
+        sync: false
       - key: NODE_ENV
         value: production

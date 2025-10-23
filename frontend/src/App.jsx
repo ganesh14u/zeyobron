@@ -5,6 +5,7 @@ import Movie from './pages/Movie';
 import Category from './pages/Category';
 import Admin from './pages/Admin';
 import Login from './pages/Login';
+import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import Profile from './pages/Profile';
 import Navbar from './components/Navbar';
@@ -95,6 +96,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password/:token" element={<ResetPassword />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/category/:categoryName" element={<Category />} />
