@@ -13,9 +13,11 @@ const app = express();
 // ✅ Allowed origins (Netlify frontend, localhost, and backend)
 const allowedOrigins = [
   "https://zeyobron.netlify.app",              // your Netlify frontend
+  "https://zeyobron-frontend.onrender.com",   // your Render frontend (if used)
   "http://localhost:5173",                     // local development
-  "https://hansitha-web-storefront.onrender.com" // backend itself
-];
+  "https://hansitha-web-storefront.onrender.com", // backend itself
+  process.env.CLIENT_URL                       // dynamic frontend URL from env
+].filter(Boolean); // Remove undefined values
 
 // ✅ CORS configuration
 app.use(
