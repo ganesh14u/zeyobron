@@ -36,18 +36,36 @@ git push -u origin main
 
 ### Step 3: Deploy on Render
 
+#### Option A: Automatic Deploy with render.yaml (Recommended)
+
+1. Go to [Render.com](https://render.com) and sign up/login
+2. Click **"New +"** → **"Blueprint"**
+3. Connect your GitHub repository `zeyobron-backend`
+4. Render will automatically detect `render.yaml`
+5. Add the required environment variables:
+   - `MONGO_URI` = `mongodb+srv://videostream:GANESH1436u@videostream.siwr7mx.mongodb.net/?retryWrites=true&w=majority&appName=VideoStream`
+   - `JWT_SECRET` = `Ganesh1436`
+   - `CLIENT_URL` = `https://your-frontend.netlify.app` (update after frontend deploy)
+6. Click **"Apply"**
+7. Wait for deployment to complete (5-10 minutes)
+8. Copy your backend URL (e.g., `https://zeyobron-backend.onrender.com`)
+
+#### Option B: Manual Configuration
+
 1. Go to [Render.com](https://render.com) and sign up/login
 2. Click **"New +"** → **"Web Service"**
 3. Connect your GitHub repository `zeyobron-backend`
 4. Configure the service:
    - **Name**: `zeyobron-backend`
    - **Environment**: `Node`
+   - **Root Directory**: Leave empty (use root)
    - **Build Command**: `npm install`
    - **Start Command**: `npm start`
    - **Plan**: Free
 
 5. Add Environment Variables (click "Advanced"):
    ```
+   NODE_VERSION=18
    PORT=3001
    MONGO_URI=mongodb+srv://videostream:GANESH1436u@videostream.siwr7mx.mongodb.net/?retryWrites=true&w=majority&appName=VideoStream
    JWT_SECRET=Ganesh1436
