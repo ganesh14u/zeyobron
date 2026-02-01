@@ -1,5 +1,6 @@
-import { Routes, Route } from 'react-router-dom';
-import { useEffect } from 'react';
+import { Routes, Route, useLocation } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import axios from 'axios';
 import Home from './pages/Home';
 import Movie from './pages/Movie';
 import Category from './pages/Category';
@@ -13,84 +14,103 @@ import Notification from './components/Notification';
 import ConfirmDialog from './components/ConfirmDialog';
 
 export default function App() {
-  const isLoginPage = window.location.pathname === '/login' || window.location.pathname.startsWith('/reset-password');
-  
+  const location = useLocation();
+  const [isBackendLive, setIsBackendLive] = useState(true);
+
+  // Check backend health
   useEffect(() => {
-    // Disable right-click context menu
+    const checkHealth = async () => {
+      try {
+        await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/health`);
+        setIsBackendLive(true);
+      } catch (err) {
+        setIsBackendLive(false);
+      }
+    };
+
+    checkHealth();
+    const interval = setInterval(checkHealth, 10000); // Check every 10 seconds
+    return () => clearInterval(interval);
+  }, []);
+
+  const isLoginPage = location.pathname === '/login' ||
+    location.pathname === '/forgot-password' ||
+    location.pathname.startsWith('/reset-password');
+
+  useEffect(() => {
+    // Global anti-right click logic
     const handleContextMenu = (e) => {
       e.preventDefault();
       return false;
     };
 
-    // Disable keyboard shortcuts for inspect/developer tools
+    // Global anti-developer tools logic
     const handleKeyDown = (e) => {
       // Prevent F12 (DevTools)
       if (e.key === 'F12') {
         e.preventDefault();
         return false;
       }
-      
-      // Windows/Linux shortcuts
-      if (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'i')) {
+
+      // Prevent Ctrl+Shift+I, J, C (Windows/Linux)
+      if (e.ctrlKey && e.shiftKey && ['I', 'J', 'C'].includes(e.key.toUpperCase())) {
         e.preventDefault();
         return false;
       }
-      if (e.ctrlKey && e.shiftKey && (e.key === 'J' || e.key === 'j')) {
+
+      // Prevent Cmd+Option+I, J, C (Mac)
+      if (e.metaKey && e.altKey && ['I', 'J', 'C'].includes(e.key.toUpperCase())) {
         e.preventDefault();
         return false;
       }
-      if (e.ctrlKey && e.shiftKey && (e.key === 'C' || e.key === 'c')) {
+
+      // Prevent Cmd/Ctrl + U (View Source)
+      if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === 'u')) {
         e.preventDefault();
         return false;
       }
-      if (e.ctrlKey && (e.key === 'u' || e.key === 'U')) {
+
+      // Prevent Cmd/Ctrl + S (Save Page)
+      if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === 's')) {
         e.preventDefault();
         return false;
       }
-      if (e.ctrlKey && (e.key === 's' || e.key === 'S')) {
+
+      // Prevent Cmd/Ctrl + P (Print Page)
+      if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === 'p')) {
         e.preventDefault();
         return false;
       }
-      
-      // Mac shortcuts: Cmd+Option+I/J/C (DevTools)
-      if (e.metaKey && e.altKey && (e.key === 'i' || e.key === 'I' || e.key === 'j' || e.key === 'J' || e.key === 'c' || e.key === 'C')) {
+    };
+
+    // Prevent dragging images
+    const handleDragStart = (e) => {
+      if (e.target.tagName === 'IMG') {
         e.preventDefault();
-        return false;
-      }
-      
-      // Mac shortcuts: Cmd+Shift+I/J/C
-      if (e.metaKey && e.shiftKey && (e.key === 'I' || e.key === 'i' || e.key === 'J' || e.key === 'j' || e.key === 'C' || e.key === 'c')) {
-        e.preventDefault();
-        return false;
-      }
-      
-      // Mac: Cmd+U (View Source)
-      if (e.metaKey && (e.key === 'u' || e.key === 'U')) {
-        e.preventDefault();
-        return false;
-      }
-      
-      // Mac: Cmd+S (Save)
-      if (e.metaKey && (e.key === 's' || e.key === 'S')) {
-        e.preventDefault();
-        return false;
       }
     };
 
     // Add event listeners
     document.addEventListener('contextmenu', handleContextMenu);
     document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('dragstart', handleDragStart);
 
     // Cleanup
     return () => {
       document.removeEventListener('contextmenu', handleContextMenu);
       document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('dragstart', handleDragStart);
     };
   }, []);
-  
+
   return (
     <div className="min-h-screen bg-[#141414] text-white">
-      {!isLoginPage && <Navbar />}
+      {!isBackendLive && (
+        <div className="fixed top-0 left-0 right-0 z-[99999] bg-red-600 text-white text-center py-2 px-4 font-bold uppercase tracking-widest text-xs shadow-xl animate-pulse">
+          ⚠️ Backend Not Connected — Check Server Connection
+        </div>
+      )}
+      <Navbar /> {/* Navbar now shown on all pages */}
       <Notification />
       <ConfirmDialog />
       <Routes>

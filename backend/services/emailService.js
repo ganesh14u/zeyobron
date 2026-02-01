@@ -4,28 +4,57 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // Create transporter
-const createTransporter = () => {
-  return nodemailer.createTransporter({
-    service: 'gmail',
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS
+const getTransporter = async () => {
+    const user = process.env.EMAIL_USER;
+    const pass = process.env.EMAIL_PASS;
+    const host = process.env.EMAIL_HOST;
+    const port = process.env.EMAIL_PORT || 587;
+
+    // 1. If no credentials, use Ethereal (Free/Development)
+    if (!user || !pass) {
+        const testAccount = await nodemailer.createTestAccount();
+        console.log('📧 Falling back to Ethereal Email. Check console for links!');
+        return nodemailer.createTransport({
+            host: "smtp.ethereal.email",
+            port: 587,
+            secure: false,
+            auth: {
+                user: testAccount.user,
+                pass: testAccount.pass,
+            },
+        });
     }
-  });
+
+    // 2. Use Custom SMTP (Brevo, etc.) if host is provided
+    if (host) {
+        return nodemailer.createTransport({
+            host,
+            port,
+            secure: port === 465,
+            auth: { user, pass },
+        });
+    }
+
+    // 3. Fallback to Gmail
+    return nodemailer.createTransport({
+        service: 'gmail',
+        auth: { user, pass }
+    });
 };
 
 // Send password reset email
 export const sendPasswordResetEmail = async (email, resetToken, userName) => {
-  try {
-    const transporter = createTransporter();
-    
-    const resetUrl = `${process.env.CLIENT_URL}/reset-password?token=${resetToken}`;
-    
-    const mailOptions = {
-      from: `"Zeyobron Support" <${process.env.EMAIL_USER}>`,
-      to: email,
-      subject: 'Password Reset Request - Zeyobron',
-      html: `
+    try {
+        const transporter = await getTransporter();
+
+        const resetUrl = `${process.env.CLIENT_URL}/reset-password/${resetToken}`;
+        const fromEmail = process.env.EMAIL_FROM || process.env.EMAIL_USER || 'support@datasai.com';
+
+        const mailOptions = {
+            from: `"Data Sai Support" <${fromEmail}>`,
+            to: email,
+            subject: 'Password Reset Request - Data Sai',
+            html: `
         <!DOCTYPE html>
         <html>
         <head>
@@ -41,7 +70,7 @@ export const sendPasswordResetEmail = async (email, resetToken, userName) => {
                             <!-- Header -->
                             <tr>
                                 <td style="padding: 30px 40px; text-align: center; background: linear-gradient(90deg, #e50914, #f40612);">
-                                    <h1 style="margin: 0; font-size: 28px; font-weight: bold; color: white;">ZEYOBRON</h1>
+                                    <h1 style="margin: 0; font-size: 28px; font-weight: bold; color: white;">DATA SAI</h1>
                                 </td>
                             </tr>
                             
@@ -55,7 +84,7 @@ export const sendPasswordResetEmail = async (email, resetToken, userName) => {
                                     </p>
                                     
                                     <p style="margin: 0 0 20px 0; color: #ccc; font-size: 16px; line-height: 1.5;">
-                                        We received a request to reset your password for your Zeyobron account. 
+                                        We received a request to reset your password for your Data Sai account. 
                                         Click the button below to create a new password.
                                     </p>
                                     
@@ -91,7 +120,7 @@ export const sendPasswordResetEmail = async (email, resetToken, userName) => {
                             <tr>
                                 <td style="padding: 30px 40px; background-color: #1a1a1a; text-align: center; border-top: 1px solid #333;">
                                     <p style="margin: 0 0 10px 0; color: #999; font-size: 12px;">
-                                        © 2025 Zeyobron. All rights reserved.
+                                        © 2025 Data Sai. All rights reserved.
                                     </p>
                                     <p style="margin: 0; color: #999; font-size: 12px;">
                                         This email was sent to ${email} because a password reset was requested.
@@ -105,33 +134,40 @@ export const sendPasswordResetEmail = async (email, resetToken, userName) => {
         </body>
         </html>
       `
-    };
+        };
 
-    const result = await transporter.sendMail(mailOptions);
-    console.log('Password reset email sent successfully to:', email);
-    return result;
-  } catch (error) {
-    console.error('Error sending password reset email:', error);
-    throw new Error('Failed to send password reset email');
-  }
+        const result = await transporter.sendMail(mailOptions);
+
+        // Log URL if using ethereal
+        if (result.envelope && result.messageId && !process.env.EMAIL_USER) {
+            console.log('📬 Ethereal Email URL:', nodemailer.getTestMessageUrl(result));
+        }
+
+        console.log('Password reset email sent successfully to:', email);
+        return result;
+    } catch (error) {
+        console.error('Error sending password reset email:', error);
+        throw new Error('Failed to send password reset email');
+    }
 };
 
 // Send welcome email
 export const sendWelcomeEmail = async (email, userName) => {
-  try {
-    const transporter = createTransporter();
-    
-    const mailOptions = {
-      from: `"Zeyobron Team" <${process.env.EMAIL_USER}>`,
-      to: email,
-      subject: 'Welcome to Zeyobron!',
-      html: `
+    try {
+        const transporter = await getTransporter();
+        const fromEmail = process.env.EMAIL_FROM || process.env.EMAIL_USER || 'welcome@datasai.com';
+
+        const mailOptions = {
+            from: `"Data Sai Team" <${fromEmail}>`,
+            to: email,
+            subject: 'Welcome to Data Sai!',
+            html: `
         <!DOCTYPE html>
         <html>
         <head>
             <meta charset="utf-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Welcome to Zeyobron</title>
+            <title>Welcome to Data Sai</title>
         </head>
         <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #000; color: #fff;">
             <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #000;">
@@ -141,21 +177,21 @@ export const sendWelcomeEmail = async (email, userName) => {
                             <!-- Header -->
                             <tr>
                                 <td style="padding: 30px 40px; text-align: center; background: linear-gradient(90deg, #e50914, #f40612);">
-                                    <h1 style="margin: 0; font-size: 28px; font-weight: bold; color: white;">ZEYOBRON</h1>
+                                    <h1 style="margin: 0; font-size: 28px; font-weight: bold; color: white;">DATA SAI</h1>
                                 </td>
                             </tr>
                             
                             <!-- Content -->
                             <tr>
                                 <td style="padding: 40px;">
-                                    <h2 style="margin: 0 0 20px 0; color: white; font-size: 24px;">Welcome to Zeyobron!</h2>
+                                    <h2 style="margin: 0 0 20px 0; color: white; font-size: 24px;">Welcome to Data Sai!</h2>
                                     
                                     <p style="margin: 0 0 20px 0; color: #ccc; font-size: 16px; line-height: 1.5;">
                                         Hi ${userName || 'there'},
                                     </p>
                                     
                                     <p style="margin: 0 0 20px 0; color: #ccc; font-size: 16px; line-height: 1.5;">
-                                        Welcome to Zeyobron! We're excited to have you join our streaming community.
+                                        Welcome to Data Sai! We're excited to have you join our streaming community.
                                     </p>
                                     
                                     <p style="margin: 0 0 20px 0; color: #ccc; font-size: 16px; line-height: 1.5;">
@@ -183,7 +219,7 @@ export const sendWelcomeEmail = async (email, userName) => {
                             <tr>
                                 <td style="padding: 30px 40px; background-color: #1a1a1a; text-align: center; border-top: 1px solid #333;">
                                     <p style="margin: 0 0 10px 0; color: #999; font-size: 12px;">
-                                        © 2025 Zeyobron. All rights reserved.
+                                        © 2025 Data Sai. All rights reserved.
                                     </p>
                                     <p style="margin: 0; color: #999; font-size: 12px;">
                                         This email was sent to ${email} as part of your account registration.
@@ -197,18 +233,24 @@ export const sendWelcomeEmail = async (email, userName) => {
         </body>
         </html>
       `
-    };
+        };
 
-    const result = await transporter.sendMail(mailOptions);
-    console.log('Welcome email sent successfully to:', email);
-    return result;
-  } catch (error) {
-    console.error('Error sending welcome email:', error);
-    throw new Error('Failed to send welcome email');
-  }
+        const result = await transporter.sendMail(mailOptions);
+
+        // Log URL if using ethereal
+        if (result.envelope && result.messageId && !process.env.EMAIL_USER) {
+            console.log('📬 Ethereal Email URL:', nodemailer.getTestMessageUrl(result));
+        }
+
+        console.log('Welcome email sent successfully to:', email);
+        return result;
+    } catch (error) {
+        console.error('Error sending welcome email:', error);
+        throw new Error('Failed to send welcome email');
+    }
 };
 
 export default {
-  sendPasswordResetEmail,
-  sendWelcomeEmail
+    sendPasswordResetEmail,
+    sendWelcomeEmail
 };

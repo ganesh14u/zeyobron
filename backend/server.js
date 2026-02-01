@@ -1,6 +1,7 @@
 import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
+import compression from "compression";
 import connectDB from "./config/db.js";
 import authRoutes from "./routes/auth.js";
 import movieRoutes from "./routes/movies.js";
@@ -9,6 +10,9 @@ import categoryRoutes from "./routes/categories.js";
 
 dotenv.config();
 const app = express();
+
+// ✅ Compression middleware
+app.use(compression());
 
 // ✅ Allowed origins for frontend
 const allowedOrigins = [

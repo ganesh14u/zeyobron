@@ -14,4 +14,9 @@ const movieSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 
+// ✅ Optimized indexes
+movieSchema.index({ featured: 1 });
+movieSchema.index({ category: 1 });
+movieSchema.index({ createdAt: -1 });
+
 export default mongoose.model('Movie', movieSchema);

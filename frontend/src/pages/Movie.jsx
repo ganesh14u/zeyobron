@@ -2,6 +2,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 import SecureVideoPlayer from '../components/SecureVideoPlayer';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 export default function Movie() {
   const { id } = useParams();
@@ -14,33 +15,44 @@ export default function Movie() {
   const token = localStorage.getItem('token');
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
+  const [dynamicDuration, setDynamicDuration] = useState(null);
+
+  const formatDuration = (seconds) => {
+    if (!seconds) return '';
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = Math.floor(seconds % 60);
+    if (hrs > 0) return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
   useEffect(() => {
     const fetchMovie = async () => {
       try {
         const response = await axios.get(`${import.meta.env.VITE_API_URL}/movies/${id}`);
         const movieData = response.data;
         setMovie(movieData);
-        
+
         // Fetch related movies from the same category
         if (movieData.category && movieData.category.length > 0) {
           const config = token ? {
             headers: { Authorization: `Bearer ${token}` }
           } : {};
-          
+
           const relatedResponse = await axios.get(
             `${import.meta.env.VITE_API_URL}/movies`,
             config
           );
-          
+
           // Filter related movies: same category, exclude current movie
-          const related = relatedResponse.data.filter(m => 
-            m._id !== id && 
+          const related = relatedResponse.data.filter(m =>
+            m._id !== id &&
             m.category?.some(cat => movieData.category.includes(cat))
           ).slice(0, 12);  // Limit to 12 related videos
-          
+
           setRelatedMovies(related);
         }
-        
+
         // Check access if user is logged in
         if (token) {
           const accessResponse = await axios.get(
@@ -62,174 +74,160 @@ export default function Movie() {
           navigate('/login');
         }
       } finally {
-        setLoading(false);
+        setTimeout(() => setLoading(false), 800);
       }
     };
-    
+
     fetchMovie();
   }, [id, token, navigate]);
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-2xl">Loading...</div>
-      </div>
-    );
+    return <LoadingSpinner />;
   }
 
   if (!movie) return null;
 
   return (
-    <div className="pt-16 bg-[#0f0f0f] min-h-screen">
-      {/* YouTube-style layout */}
-      <div className="flex flex-col lg:flex-row gap-6 px-4 py-4 max-w-[1920px] mx-auto">
-        
-        {/* Left Column - Video Player & Details */}
-        <div className="lg:w-[calc(100%-420px)] flex-shrink-0">
-          
-          {/* Back Button - Above Video */}
-          <button
-            onClick={() => navigate('/')}
-            className="mb-4 px-4 py-2 bg-[#272727] hover:bg-[#3f3f3f] rounded-lg font-medium transition-colors flex items-center gap-2"
-          >
-            <span>←</span>
-            <span>Back to Home</span>
-          </button>
-          
-          {/* Video Player Section */}
-          <div className="bg-black rounded-xl overflow-hidden mb-4">
-            {movie.videoUrl && hasAccess ? (
-              <SecureVideoPlayer
-                videoUrl={movie.videoUrl}
-                videoType={movie.videoType || 'direct'}
-                poster={movie.poster}
-                title={movie.title}
-              />
-            ) : (
-              /* Lock Screen */
-              <div className="aspect-video bg-gray-900 flex items-center justify-center relative">
-                <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/80"></div>
-                <div className="relative z-10 text-center p-8">
-                  <div className="text-6xl mb-4">🔒</div>
-                  <h2 className="text-2xl font-bold mb-4">Content Not Accessible</h2>
-                  <p className="text-gray-300 mb-6">
-                    {!token ? (
-                      'Please sign in to access this content'
-                    ) : (
-                      'You don\'t have access to this category. Contact admin for category subscription.'
-                    )}
-                  </p>
-                  
-                  {!token ? (
-                    <button
-                      onClick={() => navigate('/login')}
-                      className="px-8 py-3 bg-red-600 hover:bg-red-700 rounded-lg font-semibold"
-                    >
-                      Sign In
-                    </button>
-                  ) : (
-                    <div className="inline-block p-4 bg-gray-800 rounded-lg text-left">
-                      <p className="text-sm text-yellow-400 mb-1">
-                        Type: {user.subscription?.toUpperCase() || 'Free'}
-                      </p>
-                      <p className="text-sm text-green-400">
-                        Access: {user.subscribedCategories?.join(', ') || 'None'}
+    <div className="min-h-screen bg-[#050505]">
+      {/* Background Ambient Glow */}
+      <div className="fixed top-0 left-0 w-full h-[50vh] bg-red-600/5 blur-[120px] pointer-events-none"></div>
+
+      <div className="relative z-10 max-w-[1800px] mx-auto px-4 md:px-8 pt-24 pb-12">
+        <div className="flex flex-col xl:flex-row gap-8">
+
+          {/* Main Player Section */}
+          <div className="flex-1 space-y-8">
+            <button
+              onClick={() => navigate('/')}
+              className="group flex items-center gap-3 text-gray-400 hover:text-white transition-all font-black text-[10px] uppercase tracking-widest"
+            >
+              <span className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-red-600 transition-colors">←</span>
+              Browse Categories
+            </button>
+
+            {/* Cinematic Player Frame */}
+            <div className="relative aspect-video rounded-[2.5rem] overflow-hidden bg-[#000] border border-white/5 shadow-2xl group">
+              {movie.videoUrl && hasAccess ? (
+                <SecureVideoPlayer
+                  videoUrl={movie.videoUrl}
+                  videoType={movie.videoType || 'direct'}
+                  poster={movie.poster}
+                  title={movie.title}
+                  onDurationChange={(d) => setDynamicDuration(formatDuration(d))}
+                />
+              ) : (
+                <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-[#121212] to-[#050505]">
+                  {/* Abstract Lock UI */}
+                  <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]"></div>
+                  <div className="relative text-center space-y-8 p-12 max-w-lg">
+                    <div className="relative inline-block">
+                      <div className="w-24 h-24 rounded-3xl bg-red-600/10 border border-red-600/20 flex items-center justify-center text-4xl animate-bounce">🔒</div>
+                      <div className="absolute -inset-4 bg-red-600/20 blur-2xl rounded-full animate-pulse"></div>
+                    </div>
+                    <div className="space-y-3">
+                      <h2 className="text-4xl font-black text-white uppercase tracking-tighter">Access Locked</h2>
+                      <p className="text-gray-400 font-medium italic">
+                        {!token ? 'Please log in to watch this lesson.' : 'This lesson requires a premium subscription.'}
                       </p>
                     </div>
-                  )}
+                    {!token ? (
+                      <button onClick={() => navigate('/login')} className="w-full py-4 bg-white text-black font-black uppercase tracking-widest rounded-2xl hover:bg-gray-200 transition-all shadow-xl">Sign In to Unlock</button>
+                    ) : (
+                      <div className="p-6 bg-white/5 border border-white/10 rounded-3xl text-left space-y-2">
+                        <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Your Account Permissions</p>
+                        <div className="flex flex-wrap gap-2">
+                          {user.subscribedCategories?.map(c => <span key={c} className="px-3 py-1 bg-green-500/10 text-green-500 text-[9px] font-black rounded-lg border border-green-500/20 uppercase">{c}</span>)}
+                        </div>
+                        <p className="text-xs text-red-500 font-bold mt-4 italic">Contact Admin to enable module: "{movie.category?.[0]}"</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
+              )}
+            </div>
+
+            {/* Metadata Section */}
+            <div className="flex flex-col md:flex-row justify-between items-start gap-6 p-2">
+              <div className="space-y-4 max-w-2xl">
+                <div className="flex flex-wrap items-center gap-3">
+                  {movie.category?.map(c => (
+                    <span key={c} className="px-4 py-1.5 bg-red-600/10 border border-red-600/20 text-red-500 text-[10px] font-black rounded-xl uppercase tracking-widest">{c}</span>
+                  ))}
+                  {!movie.isPremium && (
+                    <span className="px-4 py-1.5 bg-green-500/10 border border-green-500/20 text-green-500 text-[10px] font-black rounded-xl uppercase tracking-widest flex items-center gap-2">
+                      FREE PASS
+                    </span>
+                  )}
+                  <span className="text-gray-600 font-black text-[10px] uppercase">/</span>
+                  <span className="text-gray-400 font-bold text-xs uppercase tracking-tighter">Batch: {movie.batchNo}</span>
+                </div>
+                <h1 className="text-4xl md:text-6xl font-black text-white tracking-tighter uppercase leading-tight italic">{movie.title}</h1>
+                <div className="flex items-center gap-6 text-[10px] font-black text-gray-500 uppercase tracking-widest">
+                  <span className="flex items-center gap-2">⏱️ {dynamicDuration || movie.duration}</span>
+                  <span className="flex items-center gap-2">👁️ HD 4K</span>
+                  <span className="flex items-center gap-2 uppercase">{movie.videoType === 'youtube' ? 'YouTube' : 'Direct'} Link</span>
+                </div>
+              </div>
+              <div className="flex gap-4">
+                <button className="w-14 h-14 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-center text-xl hover:bg-white/10 transition-all" title="Add to List">＋</button>
+                <button className="w-14 h-14 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-center text-xl hover:bg-white/10 transition-all" title="Share Content">↗</button>
+              </div>
+            </div>
+
+            {movie.description && (
+              <div className="bg-[#111] rounded-[2.5rem] border border-white/5 p-12 shadow-xl group hover:border-white/10 transition-all">
+                <h3 className="text-xs font-black text-gray-500 uppercase tracking-widest mb-6 flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 bg-red-600 rounded-full"></span> Description
+                </h3>
+                <p className="text-lg text-gray-300 font-medium leading-relaxed italic">{movie.description}</p>
               </div>
             )}
           </div>
 
-          {/* Video Title & Info */}
-          <div className="mb-4">
-            <h1 className="text-xl font-semibold mb-2">{movie.title}</h1>
-            
-            <div className="flex items-center gap-4 text-sm text-gray-400">
-              <span>📚 {movie.category?.join(', ')}</span>
-              <span>•</span>
-              <span>⏱️ {movie.duration}</span>
-              {movie.batchNo && (
-                <>
-                  <span>•</span>
-                  <span>📎 {movie.batchNo}</span>
-                </>
-              )}
+          {/* Sidebar Section */}
+          <aside className="w-full xl:w-[450px] space-y-8">
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="text-xl font-black text-white uppercase tracking-tighter">Related Lessons</h2>
+              <span className="text-[10px] font-black text-gray-500 uppercase">{relatedMovies.length} videos</span>
             </div>
-          </div>
 
-          {/* Description */}
-          {movie.description && (
-            <div className="bg-[#272727] rounded-xl p-4">
-              <h3 className="font-semibold mb-2">Description</h3>
-              <p className="text-sm text-gray-300 whitespace-pre-wrap">{movie.description}</p>
-            </div>
-          )}
-        </div>
-
-        {/* Right Column - Related Videos */}
-        <div className="lg:w-[400px] flex-shrink-0">
-          <div className="sticky top-20">
-            <h2 className="text-lg font-semibold mb-4">Related Videos</h2>
-            
-            <div className="space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-1 gap-6">
               {relatedMovies.length > 0 ? (
                 relatedMovies.map(related => {
-                  const userHasAccess = related.category?.some(cat => 
-                    user.subscribedCategories?.includes(cat)
-                  );
-                  
+                  const hasRelAccess = related.category?.some(cat => user.subscribedCategories?.includes(cat));
                   return (
                     <div
                       key={related._id}
                       onClick={() => navigate(`/movie/${related._id}`)}
-                      className="flex gap-2 cursor-pointer hover:bg-[#272727] rounded-lg p-2 transition-colors group relative"
+                      className="group flex gap-5 bg-[#111] border border-white/5 p-4 rounded-3xl hover:bg-[#161616] hover:border-white/20 transition-all cursor-pointer relative overflow-hidden"
                     >
-                      {/* Thumbnail */}
-                      <div className="w-40 h-24 flex-shrink-0 relative rounded-lg overflow-hidden bg-gray-800">
-                        {!userHasAccess && (
-                          <div className="absolute top-1 right-1 z-10 px-2 py-1 bg-yellow-500 text-black text-xs font-bold rounded">
-                            🔒
-                          </div>
-                        )}
-                        <img
-                          src={related.poster}
-                          alt={related.title}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                          onError={(e) => {
-                            e.target.src = 'https://via.placeholder.com/160x90?text=No+Image';
-                          }}
-                        />
-                        {related.duration && (
-                          <div className="absolute bottom-1 right-1 bg-black/80 text-white text-xs px-1 rounded">
-                            {related.duration}
+                      <div className="w-36 h-24 flex-shrink-0 rounded-2xl overflow-hidden bg-black border border-white/5 relative">
+                        <img src={related.poster} alt="" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                        {!hasRelAccess && (
+                          <div className="absolute inset-0 bg-black/60 flex items-center justify-center backdrop-blur-[2px]">
+                            <span className="text-xl">🔒</span>
                           </div>
                         )}
                       </div>
-                      
-                      {/* Info */}
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-medium text-sm line-clamp-2 mb-1 group-hover:text-white">
-                          {related.title}
-                        </h3>
-                        <p className="text-xs text-gray-400">
-                          {related.category?.slice(0, 2).join(', ')}
-                        </p>
-                        {related.batchNo && (
-                          <p className="text-xs text-gray-500 mt-1">{related.batchNo}</p>
-                        )}
+                      <div className="flex-1 py-1 space-y-2">
+                        <h4 className="font-black text-white text-sm uppercase tracking-tighter leading-tight line-clamp-2 group-hover:text-red-500 transition-colors">{related.title}</h4>
+                        <div className="flex flex-wrap gap-1">
+                          {related.category?.slice(0, 1).map(c => <span key={c} className="text-[9px] font-bold text-gray-500 uppercase">{c}</span>)}
+                          <span className="text-gray-700 text-[9px]">•</span>
+                          <span className="text-[9px] font-bold text-gray-500 uppercase">{related.duration}</span>
+                        </div>
                       </div>
                     </div>
                   );
                 })
               ) : (
-                <div className="text-center py-8 text-gray-500">
-                  <p>No related videos found</p>
+                <div className="py-20 text-center bg-[#111] rounded-[2.5rem] border border-white/5">
+                  <span className="text-4xl block mb-4">🌑</span>
+                  <p className="text-xs font-black text-gray-600 uppercase">No related lessons</p>
                 </div>
               )}
             </div>
-          </div>
+          </aside>
         </div>
       </div>
     </div>
