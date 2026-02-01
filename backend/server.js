@@ -16,7 +16,8 @@ app.use(compression());
 
 // ✅ Allowed origins for frontend
 const allowedOrigins = [
-  "https://zeyobron.netlify.app", // Netlify frontend
+  "https://zeyobron.netlify.app", // Legacy
+  "https://datasai.netlify.app",  // Potential new name
   "http://localhost:5173",        // Local dev
 ];
 
@@ -25,7 +26,9 @@ app.use(
   cors({
     origin: (origin, callback) => {
       if (!origin) return callback(null, true); // Allow mobile apps or curl
-      if (allowedOrigins.includes(origin)) {
+
+      // Allow localhost, the legacy domain, OR any Netlify app (regex)
+      if (allowedOrigins.includes(origin) || origin.endsWith(".netlify.app")) {
         console.log(`✅ CORS allowed for origin: ${origin}`);
         callback(null, true);
       } else {
