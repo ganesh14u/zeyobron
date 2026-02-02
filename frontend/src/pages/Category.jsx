@@ -12,7 +12,7 @@ export default function Category() {
   const [userCategories, setUserCategories] = useState([]);
   const [currentPage, setCurrentPage] = useState(0);
 
-  const MOVIES_PER_PAGE = 12;
+  const MOVIES_PER_PAGE = 10;
 
   useEffect(() => {
     const fetchCategoryMovies = async () => {
@@ -27,10 +27,15 @@ export default function Category() {
           config
         );
 
-        // Filter movies by category
-        const categoryMovies = response.data.filter(m =>
-          m.category?.includes(decodeURIComponent(categoryName))
-        );
+        // Filter and sort movies by category/batchNo
+        const categoryMovies = response.data
+          .filter(m => m.category?.includes(decodeURIComponent(categoryName)))
+          .sort((a, b) => {
+            const aBatch = a.batchNo || "";
+            const bBatch = b.batchNo || "";
+            return aBatch.localeCompare(bBatch, undefined, { numeric: true, sensitivity: 'base' });
+          });
+
         setMovies(categoryMovies);
 
         // Get user's subscribed categories
@@ -94,7 +99,7 @@ export default function Category() {
               {decodeURIComponent(categoryName)}
             </h1>
             <div className="flex items-center gap-4 text-xs font-bold text-gray-500 uppercase tracking-widest pl-1">
-              <span>{movies.length} Modules Available</span>
+              <span>{movies.length} Videos Available</span>
               <span className="text-gray-800">/</span>
               <span>Library Tier: {movies.some(m => m.isPremium) ? 'Elite' : 'Standard'}</span>
             </div>

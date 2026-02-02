@@ -15,6 +15,7 @@ export default function Profile() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
 
   // Fetch fresh user data
   const fetchUserData = async () => {
@@ -100,245 +101,232 @@ export default function Profile() {
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-[#0f0f0f] pt-24 pb-12 px-4 md:px-8">
-      <div className="max-w-6xl mx-auto space-y-8">
+    <div className="min-h-screen bg-[#0a0a0a] text-white font-sans pt-32 pb-20 px-6 md:px-12">
+      <div className="max-w-7xl mx-auto space-y-12">
 
-        {/* Profile Hero Section */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-[#1a1a1a] to-[#0a0a0a] rounded-[2.5rem] border border-white/5 shadow-2xl p-8 md:p-12">
-          {/* Background Decorative Elements */}
-          <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-red-600/10 blur-[120px] rounded-full -mr-48 -mt-48"></div>
-          <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-red-800/5 blur-[100px] rounded-full -ml-24 -mb-24"></div>
+        {/* Header Section */}
+        <header className="flex justify-between items-end animate-in fade-in slide-in-from-top-4 duration-700">
+          <div>
+            <h1 className="text-5xl md:text-7xl font-black uppercase tracking-tighter italic">My Profile</h1>
+            <p className="text-gray-500 text-[10px] md:text-xs font-black uppercase tracking-[0.3em] mt-2">Manage your account & preferences</p>
+          </div>
+          <button
+            onClick={() => navigate('/')}
+            className="px-8 py-4 bg-white/5 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all border border-white/5 backdrop-blur-md"
+          >
+            ← Back to Home
+          </button>
+        </header>
 
-          <div className="relative flex flex-col md:flex-row items-center gap-8 md:gap-12">
-            {/* Avatar Section */}
-            <div className="relative group">
-              <div className="w-32 h-32 md:w-48 md:h-48 rounded-[2rem] bg-gradient-to-br from-red-600 to-red-900 p-1 shadow-2xl transition-transform duration-500 group-hover:scale-105">
-                <div className="w-full h-full rounded-[1.8rem] bg-[#121212] flex items-center justify-center overflow-hidden">
-                  <span className="text-5xl md:text-7xl font-black text-white/90 tracking-tighter">
-                    {user.name?.charAt(0).toUpperCase()}
-                  </span>
+        {/* Profile Card */}
+        <div className="bg-[#161616] rounded-[3rem] p-10 md:p-16 border border-white/5 shadow-2xl relative overflow-hidden group animate-in fade-in slide-in-from-bottom-8 duration-700">
+          {/* Decorative Glow */}
+          <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-red-600/5 blur-[150px] rounded-full -mr-20 -mt-20 group-hover:bg-red-600/10 transition-colors duration-1000"></div>
+
+          <div className="relative z-10 flex flex-col lg:flex-row gap-16 items-start">
+
+            {/* Avatar Column */}
+            <div className="flex flex-col items-center space-y-6 w-full lg:w-auto">
+              <div className="relative">
+                <div className="w-48 h-48 md:w-56 md:h-56 rounded-[2.5rem] bg-gradient-to-br from-[#222] to-[#0a0a0a] border border-white/10 flex items-center justify-center shadow-2xl group-hover:border-red-600/30 transition-all duration-500">
+                  <span className="text-8xl font-black text-white/5 tracking-tighter select-none absolute">{user.name?.charAt(0).toUpperCase()}</span>
+                  <div className="relative z-10">
+                    <span className="text-6xl font-black bg-gradient-to-br from-white to-gray-500 text-transparent bg-clip-text">
+                      {user.name?.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                </div>
+                <div className={`absolute -bottom-2 -right-2 w-10 h-10 rounded-xl border-4 border-[#161616] flex items-center justify-center text-xs font-black ${user.isActive ? 'bg-green-500 text-black' : 'bg-red-500 text-white'}`}>
+                  {user.isActive ? '✓' : '✕'}
                 </div>
               </div>
-              <div className="absolute -bottom-2 -right-2 bg-green-500 w-8 h-8 rounded-full border-4 border-[#121212] animate-pulse"></div>
-            </div>
 
-            {/* Name and Stats */}
-            <div className="flex-1 text-center md:text-left space-y-4">
-              <div className="space-y-1">
-                <h1 className="text-4xl md:text-6xl font-black text-white tracking-tighter">
-                  {user.name}
-                </h1>
-                <p className="text-gray-400 font-medium text-lg">{user.email}</p>
-              </div>
-
-              <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 pt-4">
+              <div className="flex flex-col gap-3 w-full">
                 {user.subscription === 'premium' ? (
-                  <div className="px-6 py-2 bg-yellow-500 rounded-2xl flex items-center gap-2 shadow-[0_0_20px_rgba(234,179,8,0.3)]">
-                    <span className="text-xl">⭐</span>
-                    <span className="text-black font-black text-sm uppercase tracking-wider">Premium Member</span>
+                  <div className="px-6 py-4 bg-yellow-500/10 border border-yellow-500/20 text-yellow-500 rounded-2xl text-center">
+                    <div className="text-xs font-black uppercase tracking-widest">Premium Plan</div>
+                    <div className="text-[10px] opacity-60 font-bold mt-1">Founding Member</div>
                   </div>
                 ) : (
-                  <div className="px-6 py-2 bg-white/5 rounded-2xl flex items-center gap-2 border border-white/10">
-                    <span className="text-xl">📌</span>
-                    <span className="text-gray-300 font-bold text-sm uppercase tracking-wider">Free Plan</span>
+                  <div className="space-y-4 w-full">
+                    <div className="px-6 py-4 bg-white/5 border border-white/10 text-gray-400 rounded-2xl text-center">
+                      <div className="text-xs font-black uppercase tracking-widest">Free Plan</div>
+                      <div className="text-[10px] opacity-60 font-bold mt-1">Limited Access</div>
+                    </div>
+                    <button
+                      onClick={() => setShowPaymentModal(true)}
+                      className="w-full py-4 bg-red-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-red-700 transition-all shadow-xl shadow-red-900/20 hover:scale-105 active:scale-95 animate-pulse"
+                    >
+                      🚀 Upgrade to Premium
+                    </button>
                   </div>
                 )}
-
-                <div className="px-6 py-2 bg-white/5 rounded-2xl flex items-center gap-2 border border-white/10">
-                  <span className="text-green-400">●</span>
-                  <span className="text-gray-300 font-bold text-sm uppercase tracking-wider">
-                    {user.isActive ? 'Active Member' : 'Inactive'}
-                  </span>
-                </div>
               </div>
             </div>
 
-            {/* Action Button */}
-            <button
-              onClick={() => setIsEditing(!isEditing)}
-              className="px-8 py-3 bg-white text-black font-black rounded-2xl hover:bg-gray-200 transition-all active:scale-95 shadow-xl uppercase tracking-tighter text-sm"
-            >
-              {isEditing ? 'Cancel Edit' : 'Edit Profile'}
-            </button>
-          </div>
-        </div>
+            {/* UPI Payment Modal */}
+            {showPaymentModal && (
+              <div className="fixed inset-0 z-[500] flex items-center justify-center px-4 md:px-0">
+                <div className="absolute inset-0 bg-black/90 backdrop-blur-xl" onClick={() => setShowPaymentModal(false)}></div>
+                <div className="relative z-10 w-full max-w-lg bg-[#111] border border-white/10 rounded-[3rem] p-10 md:p-12 shadow-2xl animate-in zoom-in-95 duration-300">
+                  <button
+                    onClick={() => setShowPaymentModal(false)}
+                    className="absolute top-8 right-8 w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center hover:bg-white/10 transition-all text-xl"
+                  >
+                    ✕
+                  </button>
 
-        {/* Dynamic Content: Form or Info Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                  <div className="space-y-8 text-center">
+                    <div className="space-y-2">
+                      <div className="w-20 h-20 bg-red-600/10 rounded-3xl flex items-center justify-center text-4xl mx-auto mb-4">🛡️</div>
+                      <h3 className="text-3xl font-black uppercase tracking-tighter italic text-white leading-none">Complete Upgrade</h3>
+                      <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest">Premium Lifetime Access</p>
+                    </div>
 
-          {/* Left Column: Personal Info / Editor */}
-          <div className="lg:col-span-2 space-y-8">
-            <div className="bg-[#161616] rounded-[2.5rem] border border-white/5 p-8 shadow-xl">
-              <div className="flex items-center justify-between mb-8">
-                <h2 className="text-2xl font-black text-white uppercase tracking-tighter">Personal Details</h2>
+                    <div className="p-8 bg-black/40 rounded-[2rem] border border-white/5 space-y-4">
+                      <div className="flex justify-between items-center text-gray-400 text-[10px] font-black uppercase tracking-widest">
+                        <span>One-Time Investment</span>
+                        <span className="text-white text-lg">₹20,000/-</span>
+                      </div>
+                      <div className="h-px bg-white/5 w-full"></div>
+                      <div className="space-y-4 pt-2">
+                        <p className="text-[9px] text-red-500 font-bold uppercase tracking-widest italic animate-pulse">Scan or Pay via UPI to confirm</p>
+
+                        {/* Actual UPI Details & QR Code */}
+                        <div className="space-y-6">
+                          <div className="bg-white rounded-3xl p-4 shadow-2xl overflow-hidden group/qr max-w-[200px] mx-auto">
+                            <img
+                              src="/qr-code.jpg"
+                              alt="UPI QR Code"
+                              className="w-full h-auto rounded-2xl group-hover:scale-110 transition-transform duration-700"
+                            />
+                          </div>
+
+                          <div className="p-6 bg-white/5 border border-white/10 rounded-2xl space-y-3">
+                            <div className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Payable via UPI ID</div>
+                            <div className="text-xl font-bold text-white tracking-tight break-all">sbi14u@ybl</div>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                          {['GPay', 'PhonePe', 'Paytm', 'WhatsApp'].map(app => (
+                            <button key={app} className="py-4 bg-white/5 border border-white/10 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-white/10 transition-colors">
+                              {app}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <p className="text-[9px] text-gray-600 font-medium uppercase tracking-[0.2em]">Once paid, please wait for automatic confirmation or contact support with your transaction ID.</p>
+                      <button
+                        onClick={() => {
+                          const upiUrl = `upi://pay?pa=sbi14u@ybl&pn=Zeyobron&am=20000&cu=INR`;
+                          window.open(upiUrl, '_blank');
+                        }}
+                        className="w-full py-5 bg-red-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-red-700 transition-all shadow-xl shadow-red-900/40"
+                      >
+                        Open UPI App
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Details Column */}
+            <div className="flex-1 w-full space-y-10">
+              <div className="space-y-2 text-center lg:text-left">
+                <h2 className="text-4xl md:text-5xl font-black uppercase tracking-tighter text-white">{user.name}</h2>
+                <p className="text-gray-500 font-bold uppercase tracking-widest text-xs">{user.email}</p>
               </div>
 
-              {isEditing ? (
-                <form onSubmit={handleUpdate} className="space-y-6">
-                  {/* Form Inputs with Modern Styling */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold text-gray-500 uppercase ml-1">Full Name</label>
+              {/* Form Section */}
+              <div className="bg-black/20 rounded-[2.5rem] p-8 md:p-10 border border-white/5">
+                <div className="flex items-center justify-between mb-8">
+                  <h3 className="text-sm font-black text-gray-500 uppercase tracking-widest">Personal Information</h3>
+                  {!isEditing && (
+                    <button
+                      onClick={() => setIsEditing(true)}
+                      className="px-6 py-3 bg-white text-black rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-gray-200 transition-all shadow-lg hover:scale-105"
+                    >
+                      Edit Details
+                    </button>
+                  )}
+                </div>
+
+                <form onSubmit={handleUpdate} className="space-y-8">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="space-y-3">
+                      <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-4">Full Name</label>
                       <input
                         type="text"
+                        disabled={!isEditing}
                         value={formData.name}
                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                        className="w-full px-6 py-4 bg-white/5 rounded-2xl border border-white/10 focus:border-red-600 focus:outline-none focus:bg-white/10 transition-all text-white font-bold"
-                        required
+                        className={`w-full px-8 py-5 rounded-2xl font-bold transition-all outline-none text-sm ${isEditing ? 'bg-black/40 border border-white/10 focus:border-red-600 text-white' : 'bg-transparent border border-transparent text-gray-400 pl-0 text-lg'}`}
                       />
                     </div>
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold text-gray-500 uppercase ml-1">Phone Number</label>
+
+                    <div className="space-y-3">
+                      <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-4">Phone Number</label>
                       <input
                         type="tel"
+                        disabled={!isEditing}
                         value={formData.phone || ''}
                         onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                        className="w-full px-6 py-4 bg-white/5 rounded-2xl border border-white/10 focus:border-red-600 focus:outline-none focus:bg-white/10 transition-all text-white font-bold"
-                        placeholder="Not set"
+                        placeholder={isEditing ? "Enter phone number" : "Not set"}
+                        className={`w-full px-8 py-5 rounded-2xl font-bold transition-all outline-none text-sm ${isEditing ? 'bg-black/40 border border-white/10 focus:border-red-600 text-white' : 'bg-transparent border border-transparent text-gray-400 pl-0 text-lg'}`}
                       />
                     </div>
                   </div>
 
-                  <div className="space-y-2 opacity-50 cursor-not-allowed">
-                    <label className="text-xs font-bold text-gray-500 uppercase ml-1">Email Address (Locked)</label>
-                    <input
-                      type="email"
-                      value={user.email}
-                      disabled
-                      className="w-full px-6 py-4 bg-black/40 rounded-2xl border border-white/5 text-gray-500 font-bold"
-                    />
-                  </div>
+                  {/* Status Messages */}
+                  {error && <div className="p-4 bg-red-600/10 border border-red-600/20 text-red-500 rounded-xl text-center text-xs font-black uppercase tracking-widest animate-pulse">{error}</div>}
+                  {success && <div className="p-4 bg-green-500/10 border border-green-500/20 text-green-500 rounded-xl text-center text-xs font-black uppercase tracking-widest">{success}</div>}
 
-                  <div className="flex gap-4 pt-4">
-                    <button type="submit" className="flex-1 py-4 bg-red-600 text-white font-black rounded-2xl hover:bg-red-700 transition-all shadow-lg uppercase tracking-wider text-sm">
-                      Update Profile
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsEditing(false);
-                        setFormData({
-                          name: user.name || '',
-                          phone: user.phone || ''
-                        });
-                        setError('');
-                      }}
-                      className="px-8 py-4 bg-white/10 rounded-2xl hover:bg-white/20 transition-all text-sm font-bold text-white uppercase"
-                    >
-                      Cancel
-                    </button>
-                  </div>
+                  {isEditing && (
+                    <div className="flex gap-4 pt-4 border-t border-white/5">
+                      <button
+                        type="submit"
+                        className="py-5 px-10 bg-red-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-red-700 transition-all shadow-xl hover:shadow-red-900/20 hover:scale-[1.02]"
+                      >
+                        Save Changes
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsEditing(false);
+                          setFormData({ name: user.name || '', phone: user.phone || '' });
+                          setError('');
+                        }}
+                        className="py-5 px-10 bg-white/5 text-gray-400 rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-white/10 hover:text-white transition-all"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  )}
                 </form>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                  <div className="space-y-1">
-                    <p className="text-[10px] font-black text-[#e50914] uppercase tracking-widest">Full Name</p>
-                    <p className="text-xl font-bold text-white tracking-tight">{user.name}</p>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-[10px] font-black text-[#e50914] uppercase tracking-widest">Phone</p>
-                    <p className="text-xl font-bold text-white tracking-tight">{user.phone || '—'}</p>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-[10px] font-black text-[#e50914] uppercase tracking-widest">Email</p>
-                    <p className="text-xl font-bold text-white tracking-tight">{user.email}</p>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Courses / Categories Section */}
-            <div className="bg-[#161616] rounded-[2.5rem] border border-white/5 p-8 shadow-xl">
-              <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
-                <div>
-                  <h2 className="text-2xl font-black text-white uppercase tracking-tighter">My Subscribed Courses</h2>
-                  <p className="text-gray-500 text-sm font-medium mt-1">
-                    You have access to <span className="text-red-500 font-bold">{user.subscribedCategories?.length || 0}</span> learning modules.
-                  </p>
-                </div>
               </div>
 
-              {user.subscribedCategories && user.subscribedCategories.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-                  {user.subscribedCategories.map((category, index) => (
-                    <button
-                      key={index}
-                      onClick={() => {
-                        navigate(`/#category-${category}`);
-                        setTimeout(() => {
-                          const el = document.getElementById(`category-${category}`);
-                          if (el) window.scrollTo({ top: el.offsetTop - 100, behavior: 'smooth' });
-                        }, 100);
-                      }}
-                      className="group relative bg-[#1c1c1c] hover:bg-red-600 transition-all duration-500 rounded-3xl p-6 text-left border border-white/5 hover:border-red-400 hover:-translate-y-2 overflow-hidden shadow-lg"
-                    >
-                      <div className="absolute top-0 right-0 w-24 h-24 bg-red-500/10 blur-[40px] rounded-full group-hover:bg-white/20 transition-all"></div>
-                      <div className="text-3xl mb-4 group-hover:scale-125 transition-transform duration-500 origin-left">📚</div>
-                      <div className="font-black text-white text-lg tracking-tighter group-hover:text-white uppercase truncate">{category}</div>
-                      <div className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-1 group-hover:text-red-100 transition-colors">Module Assigned</div>
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-16 bg-black/20 rounded-[2rem] border border-dashed border-white/10">
-                  <div className="text-6xl mb-4">🔓</div>
-                  <p className="text-xl font-black text-white uppercase tracking-tighter">No Active Courses</p>
-                  <p className="text-gray-500 text-sm max-w-xs mx-auto mt-2">
-                    Contact your course administrator to get your modules activated and start learning.
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Right Column: Status Cards */}
-          <div className="space-y-8">
-            {/* Account Status Card */}
-            <div className="bg-gradient-to-br from-[#161616] to-[#0a0a0a] rounded-[2.5rem] border border-white/5 p-8 shadow-xl">
-              <h3 className="text-xs font-black text-gray-500 uppercase tracking-widest mb-6 border-b border-white/5 pb-4">Account Status</h3>
-              <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-bold text-gray-400">Subscription</span>
-                  <span className={`text-xs font-black px-3 py-1 rounded-lg uppercase ${user.subscription === 'premium' ? 'bg-yellow-500/10 text-yellow-500' : 'bg-white/5 text-gray-500'
-                    }`}>
-                    {user.subscription}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-bold text-gray-400">Membership</span>
-                  <span className="text-xs font-black bg-green-500/10 text-green-500 px-3 py-1 rounded-lg uppercase">
-                    Active
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-bold text-gray-400">Member Since</span>
-                  <span className="text-xs font-black text-white px-3 py-1 rounded-lg uppercase">
-                    {new Date(user.createdAt).toLocaleDateString()}
-                  </span>
-                </div>
+              {/* Stats Grid */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {[
+                  { l: 'Member Since', v: new Date(user.createdAt).getFullYear() || '2024' },
+                  { l: 'Last Login', v: 'Today' },
+                  { l: 'Plan Status', v: user.isActive ? 'Active' : 'Inactive' },
+                  { l: 'Modules', v: user.subscribedCategories?.length || 0 }
+                ].map((stat, i) => (
+                  <div key={i} className="bg-[#111] p-6 rounded-[2rem] border border-white/5 text-center hover:border-white/10 transition-colors">
+                    <div className="text-2xl font-black text-white mb-2">{stat.v}</div>
+                    <div className="text-[9px] font-black text-gray-600 uppercase tracking-widest">{stat.l}</div>
+                  </div>
+                ))}
               </div>
-            </div>
 
-            {/* Info Message */}
-            <div className="bg-red-600/10 rounded-[2.5rem] border border-red-900/20 p-8">
-              <div className="text-2xl mb-2">🔄</div>
-              <p className="text-sm font-bold text-red-100/80 leading-relaxed">
-                Your profile data is synchronized automatically with our secure servers every <span className="text-red-400 font-black">5 seconds</span>.
-              </p>
-            </div>
-
-            {/* Help Card */}
-            <div className="bg-[#161616] rounded-[2.5rem] border border-white/5 p-8">
-              <h3 className="text-xs font-black text-white uppercase tracking-widest mb-4">Need Help?</h3>
-              <p className="text-gray-500 text-xs font-medium mb-6 leading-relaxed">
-                If you have issues with your subscription or can't see your courses, contact our support team.
-              </p>
-              <button className="w-full py-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl transition-all text-xs font-black text-white uppercase tracking-widest">
-                Contact Support
-              </button>
             </div>
           </div>
-
         </div>
 
         {/* Global Notifications */}

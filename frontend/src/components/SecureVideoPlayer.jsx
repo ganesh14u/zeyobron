@@ -138,6 +138,12 @@ export default function SecureVideoPlayer({ videoUrl, videoType, poster, title, 
               } catch (e) { }
             },
             onStateChange: (event) => {
+              // Update duration again on State Change as YouTube sometimes reports 0 during Ready
+              if (event.target.getDuration) {
+                const d = event.target.getDuration();
+                if (d > 0) setDuration(d);
+              }
+
               if (event.data === window.YT.PlayerState.PLAYING) {
                 setIsPlaying(true);
               } else if (event.data === window.YT.PlayerState.PAUSED) {

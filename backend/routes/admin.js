@@ -6,6 +6,9 @@ import { protect, adminOnly } from '../middleware/auth.js';
 import multer from 'multer';
 import { Readable } from 'stream';
 import csv from 'csv-parser';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -14,11 +17,10 @@ const upload = multer({ storage: multer.memoryStorage() });
 
 // Download sample CSV template
 router.get('/movies/sample-csv', protect, adminOnly, (req, res) => {
-  const sampleCSV = `title,description,poster,videoUrl,videoType,category,batchNo,duration,featured,isPremium
-Sample Movie 1,This is a great action movie,https://via.placeholder.com/300x450?text=Movie1,https://www.youtube.com/watch?v=dQw4w9WgXcQ,youtube,"Action,Drama",BATCH-2024-001,2h 15min,true,true
-Sample Movie 2,Comedy film for everyone,https://via.placeholder.com/300x450?text=Movie2,https://example.com/video.mp4,direct,Comedy,BATCH-2024-002,1h 45min,false,false
-Sample Movie 3,Thrilling sci-fi adventure,https://via.placeholder.com/300x450?text=Movie3,https://www.youtube.com/watch?v=example,youtube,"Sci-Fi,Thriller",BATCH-2024-003,2h 30min,true,true`;
-  
+  const sampleCSV = `Title,Description,Poster,VideoUrl,VideoType,BatchNo,IsPremium,Featured,Categories
+AWS Cloud Practitioner Mastery,"Complete guide to cloud computing with AWS. Learn core services, security, and architecture.",https://images.unsplash.com/photo-1516116216624-53e697fedbea,https://www.youtube.com/watch?v=dQw4w9WgXcQ,youtube,Batch 01,true,true,"Big Data Videos, Gold Videos"
+SQL Performance Tuning,"Learn how to optimize slow queries and improve database performance indexes.",https://images.unsplash.com/photo-1544383835-bda2bc66a55d,https://www.youtube.com/watch?v=dQw4w9WgXcQ,youtube,Session 45,false,true,"Big Data Sql Scenarios"`;
+
   res.setHeader('Content-Type', 'text/csv');
   res.setHeader('Content-Disposition', 'attachment; filename="sample-movies.csv"');
   res.send(sampleCSV);
@@ -44,10 +46,10 @@ router.post('/movies/bulk-csv', protect, adminOnly, upload.single('file'), async
     readableStream
       .pipe(csv())
       .on('data', (row) => {
-        // Trim whitespace from all values and handle empty fields
+        // Trim whitespace from all values
         const cleanRow = {};
         Object.keys(row).forEach(key => {
-          cleanRow[key.trim()] = row[key] ? row[key].trim() : '';
+          cleanRow[key.trim().toLowerCase()] = row[key] ? row[key].trim() : '';
         });
 
         // Only add movies with a title
@@ -56,13 +58,13 @@ router.post('/movies/bulk-csv', protect, adminOnly, upload.single('file'), async
             title: cleanRow.title,
             description: cleanRow.description || '',
             poster: cleanRow.poster || '',
-            videoUrl: cleanRow.videoUrl || '',
-            videoType: cleanRow.videoType || 'direct',
-            category: cleanRow.category ? cleanRow.category.split(',').map(c => c.trim()) : [],
-            batchNo: cleanRow.batchNo || '',
+            videoUrl: cleanRow.videourl || cleanRow.url || '',
+            videoType: (cleanRow.videotype || cleanRow.type || 'direct').toLowerCase(),
+            category: (cleanRow.categories || cleanRow.category) ? (cleanRow.categories || cleanRow.category).split(',').map(c => c.trim()) : [],
+            batchNo: cleanRow.batch || cleanRow.batchno || '',
             duration: cleanRow.duration || '',
             featured: cleanRow.featured === 'true' || cleanRow.featured === '1' || cleanRow.featured === 'TRUE',
-            isPremium: cleanRow.isPremium === 'true' || cleanRow.isPremium === '1' || cleanRow.isPremium === 'TRUE'
+            isPremium: cleanRow.ispremium === 'true' || cleanRow.ispremium === '1' || cleanRow.ispremium === 'TRUE'
           });
         }
       })
@@ -71,36 +73,36 @@ router.post('/movies/bulk-csv', protect, adminOnly, upload.single('file'), async
           if (movies.length === 0) {
             return res.status(400).json({ message: 'No valid movies found in CSV. Make sure the file has a "title" column and at least one row with data.' });
           }
-          
+
           // Check for duplicates by title and prevent insertion
           const existingTitles = await Movie.find({
             title: { $in: movies.map(m => m.title) }
           }).select('title');
-          
+
           const existingTitleSet = new Set(existingTitles.map(m => m.title));
           const newMovies = movies.filter(m => !existingTitleSet.has(m.title));
           const duplicates = movies.filter(m => existingTitleSet.has(m.title));
-          
+
           if (newMovies.length === 0) {
-            return res.status(400).json({ 
+            return res.status(400).json({
               message: 'All videos are duplicates. No new videos were added.',
               duplicates: duplicates.map(m => m.title)
             });
           }
-          
+
           const createdMovies = await Movie.insertMany(newMovies);
-          
-          const response = { 
-            success: true, 
-            count: createdMovies.length, 
+
+          const response = {
+            success: true,
+            count: createdMovies.length,
             movies: createdMovies
           };
-          
+
           if (duplicates.length > 0) {
             response.warning = `${duplicates.length} duplicate(s) skipped: ${duplicates.map(m => m.title).join(', ')}`;
             response.duplicates = duplicates.map(m => m.title);
           }
-          
+
           res.json(response);
         } catch (error) {
           res.status(500).json({ message: 'Database error: ' + error.message });
@@ -115,17 +117,30 @@ router.post('/movies/bulk-csv', protect, adminOnly, upload.single('file'), async
 });
 
 // Bulk upload movies (JSON - keep for backward compatibility)
+// Bulk upload movies (JSON - keep for backward compatibility)
 router.post('/movies/bulk', protect, adminOnly, async (req, res) => {
   try {
     const { movies } = req.body;
     if (!Array.isArray(movies)) {
       return res.status(400).json({ message: 'Movies must be an array' });
     }
-    const createdMovies = await Movie.insertMany(movies);
-    res.json({ 
-      success: true, 
-      count: createdMovies.length, 
-      movies: createdMovies 
+
+    // Check for duplicates
+    const titles = movies.map(m => m.title);
+    const existing = await Movie.find({ title: { $in: titles } }).select('title');
+    const existingSet = new Set(existing.map(m => m.title));
+
+    const newMovies = movies.filter(m => !existingSet.has(m.title));
+
+    if (newMovies.length === 0) {
+      return res.json({ message: 'All movies already exist', count: 0 });
+    }
+
+    const createdMovies = await Movie.insertMany(newMovies);
+    res.json({
+      success: true,
+      count: createdMovies.length,
+      movies: createdMovies
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -187,16 +202,16 @@ router.put('/user/:id/subscription', protect, adminOnly, async (req, res) => {
   try {
     const { subscription, subscribedCategories } = req.body;
     const updates = {};
-    
+
     if (subscription) updates.subscription = subscription;
     if (subscribedCategories) updates.subscribedCategories = subscribedCategories;
-    
+
     const user = await User.findByIdAndUpdate(
-      req.params.id, 
-      updates, 
+      req.params.id,
+      updates,
       { new: true }
     ).select('-password');
-    
+
     res.json(user);
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -209,12 +224,12 @@ router.put('/user/:id/status', protect, adminOnly, async (req, res) => {
     const { status } = req.body; // 'active' or 'revoked'
     const user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ message: 'User not found' });
-    
+
     // Prevent revoking admin@netflix.com
     if (user.email === 'admin@netflix.com' && status === 'revoked') {
       return res.status(403).json({ message: 'Cannot revoke the main admin account' });
     }
-    
+
     if (status === 'revoked') {
       // Revoke access: clear all categories and set as inactive
       user.isActive = false;
@@ -223,15 +238,15 @@ router.put('/user/:id/status', protect, adminOnly, async (req, res) => {
     } else if (status === 'active') {
       user.isActive = true;
     }
-    
+
     await user.save();
-    
-    res.json({ 
-      user: { 
-        ...user.toObject(), 
-        password: undefined 
+
+    res.json({
+      user: {
+        ...user.toObject(),
+        password: undefined
       },
-      message: `User ${status === 'revoked' ? 'access revoked' : 'activated'}` 
+      message: `User ${status === 'revoked' ? 'access revoked' : 'activated'}`
     });
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -243,10 +258,10 @@ router.put('/user/:id/toggle-status', protect, adminOnly, async (req, res) => {
   try {
     const user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ message: 'User not found' });
-    
+
     user.isActive = !user.isActive;
     await user.save();
-    
+
     res.json({ isActive: user.isActive, message: `User ${user.isActive ? 'activated' : 'deactivated'}` });
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -258,17 +273,151 @@ router.delete('/user/:id', protect, adminOnly, async (req, res) => {
   try {
     const user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ message: 'User not found' });
-    
+
     // Prevent deleting admin@netflix.com
     if (user.email === 'admin@netflix.com') {
       return res.status(403).json({ message: 'Cannot delete the main admin account' });
     }
-    
+
     await User.findByIdAndDelete(req.params.id);
     res.json({ message: 'User deleted successfully' });
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
+});
+
+
+
+// ==================== BULK IMPORT (CSV) ====================
+
+const csvUpload = multer({ dest: 'uploads/' });
+
+
+router.post('/movies/bulk-csv', protect, adminOnly, csvUpload.single('file'), async (req, res) => {
+  console.log('📂 CSV Upload Request Received');
+  if (!req.file) {
+    console.error('❌ No file attached');
+    return res.status(400).json({ message: 'No file uploaded' });
+  }
+
+  console.log('📄 File info:', req.file.path, req.file.mimetype, req.file.size);
+
+  // Sniff delimiter
+  let delimiter = ',';
+  try {
+    const content = req.file.path ? fs.readFileSync(req.file.path, 'utf8') : req.file.buffer.toString('utf8');
+    const firstLine = content.split('\n')[0];
+    if (firstLine.includes('\t') && firstLine.split('\t').length > firstLine.split(',').length) {
+      delimiter = '\t';
+    }
+  } catch (e) {
+    console.log('Delim check failed, defaulting to comma');
+  }
+  console.log('🕵️ Detected Delimiter:', delimiter === '\t' ? 'TAB' : 'COMMA');
+
+  const results = [];
+  fs.createReadStream(req.file.path)
+    .pipe(csv({
+      mapHeaders: ({ header }) => header.toLowerCase().trim(),
+      separator: delimiter
+    }))
+    .on('headers', (headers) => {
+      console.log('📋 Detected CSV Headers:', headers);
+    })
+    .on('data', (data) => {
+      // Robust normalization
+      const normalized = {};
+      Object.keys(data).forEach(key => {
+        // Remove BOM and whitespace
+        const cleanKey = key.replace(/^\uFEFF/, '').toLowerCase().trim();
+        normalized[cleanKey] = data[key];
+      });
+
+      // console.log('📝 Parsed Row:', normalized); // checking row content
+
+      if (normalized.title) {
+        results.push(normalized);
+      } else {
+        // If row is NOT empty but missing title, warn
+        if (Object.values(normalized).some(v => v)) {
+          console.warn('⚠️ Row missing title (skipped):', normalized);
+        }
+      }
+    })
+    .on('end', async () => {
+      try {
+        console.log(`✅ CSV Parsing complete. Valid rows: ${results.length}`);
+
+        if (results.length === 0) {
+          throw new Error('No valid movies found in CSV. Ensure valid "Title" column.');
+        }
+
+        let successCount = 0;
+
+        // Debug first row keys
+        if (results.length > 0) {
+          console.log('🔍 First Row Keys:', Object.keys(results[0]));
+          console.log('🔍 First Row Data (Sample):', {
+            title: results[0].title,
+            cat: results[0].categories || results[0].category,
+            sub: results[0].subscription || results[0].accesstype
+          });
+        }
+
+
+        for (const row of results) {
+          // Build Partial Update Object
+          const updateData = {};
+
+          // 1. Text Fields - Only update if provided and not undefined
+          if (row.description !== undefined) updateData.description = row.description;
+          if (row.poster !== undefined) updateData.poster = row.poster;
+          if (row.videourl !== undefined) {
+            updateData.videoUrl = row.videourl;
+            updateData.videoType = (row.videourl && row.videourl.includes('youtube')) ? 'youtube' : 'direct';
+          }
+          // Support both Batch and BatchNo
+          if (row.batch !== undefined) updateData.batchNo = row.batch;
+          else if (row.batchno !== undefined) updateData.batchNo = row.batchno;
+
+          if (row.duration !== undefined) updateData.duration = row.duration;
+
+          // 2. Categories - Update only if column exists
+          const catString = row.categories !== undefined ? row.categories : row.category;
+          if (catString !== undefined) {
+            updateData.category = catString ? catString.split(/[,|]/).map(c => c.trim()) : [];
+          }
+
+          // 3. Subscription - Update only if column exists
+          const subString = row.subscription !== undefined ? row.subscription : row.accesstype;
+          if (subString !== undefined) {
+            // If they provide the column, we calculate value. 
+            // Logic: "Free" -> false. Anything else (or empty) -> Premium (default)
+            updateData.isPremium = !subString.toLowerCase().includes('free');
+          }
+
+          if (Object.keys(updateData).length > 0) {
+            await Movie.findOneAndUpdate(
+              { title: row.title }, // Match by Title
+              { $set: updateData },
+              { upsert: true, new: true }
+            );
+            successCount++;
+          }
+        }
+
+        // Cleanup
+        if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+
+        res.json({ message: `Successfully processed ${successCount} lessons` });
+
+      } catch (error) {
+        console.error('❌ Import Error:', error.message);
+        if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+        res.status(400).json({ message: error.message });
+      }
+    });
+
 });
 
 export default router;

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { useNotification } from '../components/Notification';
@@ -18,7 +18,7 @@ export default function Admin() {
 
   const [form, setForm] = useState({
     title: '', description: '', poster: '', videoUrl: '', videoType: 'youtube',
-    category: [], batchNo: '', duration: '', featured: false, isPremium: false
+    category: [], batchNo: '', featured: false, isPremium: false
   });
   const [categoryForm, setCategoryForm] = useState({ name: '', description: '', isPremium: false });
   const [userSubForm, setUserSubForm] = useState({ subscription: 'free', subscribedCategories: [] });
@@ -27,6 +27,38 @@ export default function Admin() {
   const [subscriptionFilter, setSubscriptionFilter] = useState('all');
   const [selectedUser, setSelectedUser] = useState(null);
   const [csvFile, setCsvFile] = useState(null);
+  const [isImporting, setIsImporting] = useState(false);
+  const [bulkMode, setBulkMode] = useState(false);
+  const fileInputRef = useRef(null);
+
+  const handleBulkImport = async () => {
+    if (!csvFile) return;
+    setIsImporting(true);
+
+    try {
+      const fd = new FormData();
+      fd.append('file', csvFile);
+
+      await axios.post(
+        `${import.meta.env.VITE_API_URL}/admin/movies/bulk-csv`,
+        fd,
+        {
+          headers: { ...getAuthHeaders().headers, 'Content-Type': 'multipart/form-data' }
+        }
+      );
+
+      notify('Lessons imported successfully!', 'success');
+      setCsvFile(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+      fetchData();
+    } catch (err) {
+      notify(err.response?.data?.message || err.message, 'error');
+    } finally {
+      setIsImporting(false);
+    }
+  };
 
   const getAuthHeaders = () => ({
     headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
@@ -78,7 +110,7 @@ export default function Admin() {
       const endpoint = editingId ? `/admin/movie/${editingId}` : '/admin/movie';
       await axios[editingId ? 'put' : 'post'](`${import.meta.env.VITE_API_URL}${endpoint}`, cleanedForm, getAuthHeaders());
       notify(`Content ${editingId ? 'Updated' : 'Published'}`, 'success');
-      setForm({ title: '', description: '', poster: '', videoUrl: '', videoType: 'youtube', category: [], batchNo: '', duration: '', featured: false, isPremium: false });
+      setForm({ title: '', description: '', poster: '', videoUrl: '', videoType: 'youtube', category: [], batchNo: '', featured: false, isPremium: false });
       setEditingId(null);
       fetchData();
     } catch (err) { notify(err.response?.data?.message || err.message, 'error'); }
@@ -91,6 +123,30 @@ export default function Admin() {
       setSelectedUser(null);
       fetchData();
     } catch (err) { notify(err.message, 'error'); }
+  };
+
+  const [selectedMovies, setSelectedMovies] = useState([]);
+
+  const toggleSelectAll = () => {
+    if (selectedMovies.length === movies.length) {
+      setSelectedMovies([]);
+    } else {
+      setSelectedMovies(movies.map(m => m._id));
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (!selectedMovies.length) return;
+    if (await confirm(`Are you sure you want to delete ${selectedMovies.length} lessons? This cannot be undone.`)) {
+      try {
+        await Promise.all(selectedMovies.map(id => axios.delete(`${import.meta.env.VITE_API_URL}/admin/movie/${id}`, getAuthHeaders())));
+        notify(`${selectedMovies.length} lessons deleted successfully`, 'success');
+        setSelectedMovies([]);
+        fetchData();
+      } catch (err) {
+        notify('Failed to delete some lessons', 'error');
+      }
+    }
   };
 
   const toggleCategory = (catName) => {
@@ -111,10 +167,9 @@ export default function Admin() {
         <nav className="flex-1 px-4 space-y-2">
           {[
             { id: 'overview', label: 'Dashboard', i: '📊' },
-            { id: 'movies', label: 'Library', i: '🎥' },
+            { id: 'lessons', label: 'Lessons', i: '🎥' },
             { id: 'users', label: 'Members', i: '👥' },
-            { id: 'categories', label: 'Modules', i: '📂' },
-            { id: 'bulk', label: 'Automate', i: '⚡' },
+            { id: 'categories', label: 'Categories', i: '📂' },
           ].map(t => (
             <button
               key={t.id} onClick={() => setActiveTab(t.id)}
@@ -130,7 +185,9 @@ export default function Admin() {
       <main className="md:ml-64 flex-1 p-6 md:p-12 overflow-x-hidden">
         <header className="flex justify-between items-end mb-12">
           <div>
-            <h1 className="text-4xl font-black uppercase tracking-tighter">{activeTab}</h1>
+            <h1 className="text-4xl font-black uppercase tracking-tighter">
+              {activeTab === 'lessons' ? 'Lessons' : activeTab}
+            </h1>
             <p className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mt-1">Management Dashboard</p>
           </div>
           <button onClick={() => navigate('/')} className="px-6 py-3 bg-white/5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all border border-white/5">← Exit Admin</button>
@@ -153,81 +210,180 @@ export default function Admin() {
           </div>
         )}
 
-        {activeTab === 'movies' && (
+        {activeTab === 'lessons' && (
           <div className="space-y-8 animate-in fade-in duration-500">
-            <div className="bg-[#161616] rounded-[2.5rem] p-10 border border-white/5 shadow-2xl">
-              <h3 className="text-xl font-black uppercase tracking-tighter mb-8 italic text-red-600">{editingId ? 'Edit Lesson' : 'Add New Lesson'}</h3>
-              <form onSubmit={handleMovieSubmit} className="space-y-8">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-4">Lesson Title</label>
-                    <input type="text" placeholder="e.g. Advanced Big Data Analytics" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} className="px-6 py-5 bg-black/40 border border-white/10 rounded-2xl w-full focus:border-red-600 outline-none transition-all font-bold" required />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-4">Poster Image URL</label>
-                    <input type="text" placeholder="Paste poster URL here" value={form.poster} onChange={e => setForm({ ...form, poster: e.target.value })} className="px-6 py-5 bg-black/40 border border-white/10 rounded-2xl w-full focus:border-red-600 outline-none transition-all font-mono text-xs" />
-                  </div>
-                  <div className="md:col-span-2 space-y-2">
-                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-4">Video Source URL</label>
-                    <input type="text" placeholder="YouTube URL or Direct MP4 Link" value={form.videoUrl} onChange={e => setForm({ ...form, videoUrl: e.target.value })} className="px-6 py-5 bg-black/40 border border-white/10 rounded-2xl w-full focus:border-red-600 outline-none transition-all font-mono text-xs" />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-4">Video Type</label>
-                    <select value={form.videoType} onChange={e => setForm({ ...form, videoType: e.target.value })} className="px-6 py-5 bg-black/40 border border-white/10 rounded-2xl w-full focus:border-red-600 outline-none transition-all font-black uppercase text-[10px] tracking-widest appearance-none">
-                      <option value="youtube">YouTube</option><option value="direct">Direct MP4/m3u8</option>
-                    </select>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-4">Batch / Session No</label>
-                    <input type="text" placeholder="e.g. Session 01, L1-V2" value={form.batchNo} onChange={e => setForm({ ...form, batchNo: e.target.value })} className="px-6 py-5 bg-black/40 border border-white/10 rounded-2xl w-full focus:border-red-600 outline-none transition-all font-bold" />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-4">Duration</label>
-                    <input type="text" placeholder="e.g. 1h 24m 10s" value={form.duration} onChange={e => setForm({ ...form, duration: e.target.value })} className="px-6 py-5 bg-black/40 border border-white/10 rounded-2xl w-full focus:border-red-600 outline-none transition-all font-bold" />
-                  </div>
-                  <div className="space-y-4">
-                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-4">Access Type</label>
-                    <div className="flex gap-4">
-                      <button type="button" onClick={() => setForm({ ...form, isPremium: !form.isPremium })} className={`flex-1 py-5 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${form.isPremium ? 'bg-yellow-500 text-black shadow-lg shadow-yellow-900/20' : 'bg-white/5 text-gray-500 hover:text-white border border-white/5'}`}>
-                        {form.isPremium ? '🔒 Premium Access' : '🆓 Free Access'}
-                      </button>
-                      <button type="button" onClick={() => setForm({ ...form, featured: !form.featured })} className={`flex-1 py-5 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${form.featured ? 'bg-red-600 text-white shadow-lg shadow-red-900/20' : 'bg-white/5 text-gray-500 hover:text-white border border-white/5'}`}>
-                        {form.featured ? '★ Featured' : '☆ Regular'}
-                      </button>
+            <div className="flex gap-4">
+              <button
+                onClick={() => setBulkMode(false)}
+                className={`flex-1 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all border ${!bulkMode ? 'bg-red-600 border-red-600 shadow-xl shadow-red-900/20' : 'bg-white/5 border-white/10 text-gray-500 hover:text-white'}`}
+              >
+                Manual Upload
+              </button>
+              <button
+                onClick={() => setBulkMode(true)}
+                className={`flex-1 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all border ${bulkMode ? 'bg-red-600 border-red-600 shadow-xl shadow-red-900/20' : 'bg-white/5 border-white/10 text-gray-500 hover:text-white'}`}
+              >
+                Bulk Upload (CSV)
+              </button>
+            </div>
+
+            {!bulkMode ? (
+              <div className="bg-[#161616] rounded-[2.5rem] p-10 border border-white/5 shadow-2xl">
+                <h3 className="text-xl font-black uppercase tracking-tighter mb-8 italic text-red-600">{editingId ? 'Edit Lesson' : 'Add New Lesson'}</h3>
+                <form onSubmit={handleMovieSubmit} className="space-y-8">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-4">Lesson Title</label>
+                      <input type="text" placeholder="e.g. Advanced Big Data Analytics" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} className="px-6 py-5 bg-black/40 border border-white/10 rounded-2xl w-full focus:border-red-600 outline-none transition-all font-bold" required />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-4">Poster Image URL</label>
+                      <input type="text" placeholder="Paste poster URL here" value={form.poster} onChange={e => setForm({ ...form, poster: e.target.value })} className="px-6 py-5 bg-black/40 border border-white/10 rounded-2xl w-full focus:border-red-600 outline-none transition-all font-mono text-xs" />
+                    </div>
+                    <div className="md:col-span-2 space-y-2">
+                      <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-4">Video Source URL</label>
+                      <input type="text" placeholder="YouTube URL or Direct MP4 Link" value={form.videoUrl} onChange={e => setForm({ ...form, videoUrl: e.target.value })} className="px-6 py-5 bg-black/40 border border-white/10 rounded-2xl w-full focus:border-red-600 outline-none transition-all font-mono text-xs" />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-4">Video Type</label>
+                      <select value={form.videoType} onChange={e => setForm({ ...form, videoType: e.target.value })} className="px-6 py-5 bg-black/40 border border-white/10 rounded-2xl w-full focus:border-red-600 outline-none transition-all font-black uppercase text-[10px] tracking-widest appearance-none">
+                        <option value="youtube">YouTube</option><option value="direct">Direct MP4/m3u8</option>
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-4">Batch / Session No</label>
+                      <input type="text" placeholder="e.g. Session 01" value={form.batchNo} onChange={e => setForm({ ...form, batchNo: e.target.value })} className="px-6 py-5 bg-black/40 border border-white/10 rounded-2xl w-full focus:border-red-600 outline-none transition-all font-bold" />
+                    </div>
+
+                    <div className="space-y-4">
+                      <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-4">Access Type</label>
+                      <div className="flex gap-4">
+                        <button type="button" onClick={() => setForm({ ...form, isPremium: !form.isPremium })} className={`flex-1 py-5 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${form.isPremium ? 'bg-yellow-500 text-black shadow-lg shadow-yellow-900/20' : 'bg-white/5 text-gray-500 hover:text-white border border-white/5'}`}>
+                          {form.isPremium ? '🔒 Premium Access' : '🆓 Free Access'}
+                        </button>
+                        <button type="button" onClick={() => setForm({ ...form, featured: !form.featured })} className={`flex-1 py-5 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${form.featured ? 'bg-red-600 text-white shadow-lg shadow-red-900/20' : 'bg-white/5 text-gray-500 hover:text-white border border-white/5'}`}>
+                          {form.featured ? '★ Featured' : '☆ Regular'}
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="space-y-4">
-                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-4">Assign Categories (Toggle to select)</label>
-                  <div className="flex flex-wrap gap-2 p-6 bg-black/20 rounded-3xl border border-white/10">
-                    {categories.map(cat => {
-                      const isSel = (form.category || []).includes(cat.name);
-                      return (
-                        <button key={cat._id} type="button" onClick={() => toggleCategory(cat.name)} className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all ${isSel ? 'bg-white text-black' : 'bg-white/5 text-gray-600 hover:text-white hover:bg-white/10'}`}>{cat.name}</button>
-                      );
-                    })}
+                  <div className="space-y-4">
+                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-4">Assign Categories (Toggle to select)</label>
+                    <div className="flex flex-wrap gap-2 p-6 bg-black/20 rounded-3xl border border-white/10">
+                      {categories
+                        .map(cat => {
+                          const isSel = (form.category || []).includes(cat.name);
+                          return (
+                            <button key={cat._id} type="button" onClick={() => toggleCategory(cat.name)} className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all ${isSel ? 'bg-white text-black' : 'bg-white/5 text-gray-600 hover:text-white hover:bg-white/10'}`}>{cat.name}</button>
+                          );
+                        })}
+                    </div>
                   </div>
-                </div>
 
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-4">Description</label>
-                  <textarea rows="4" placeholder="Enter comprehensive lesson details..." value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} className="px-6 py-5 bg-black/40 border border-white/10 rounded-2xl w-full focus:border-red-600 outline-none transition-all resize-none font-medium"></textarea>
-                </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-4">Description</label>
+                    <textarea rows="4" placeholder="Enter comprehensive lesson details..." value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} className="px-6 py-5 bg-black/40 border border-white/10 rounded-2xl w-full focus:border-red-600 outline-none transition-all resize-none font-medium"></textarea>
+                  </div>
 
-                <div className="flex gap-6">
-                  <button type="submit" className="flex-1 py-6 bg-red-600 rounded-2xl font-black uppercase tracking-widest hover:scale-[1.01] active:scale-95 transition-all shadow-2xl shadow-red-900/20 text-sm">{editingId ? 'Update Lesson' : 'Publish Lesson'}</button>
-                  {editingId && <button type="button" onClick={() => { setEditingId(null); setForm({ title: '', description: '', poster: '', videoUrl: '', videoType: 'youtube', category: [], batchNo: '', duration: '', featured: false, isPremium: false }); }} className="px-12 bg-white/5 text-white border border-white/10 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-white/10 transition-all">Cancel</button>}
+                  <div className="flex gap-6">
+                    <button type="submit" className="flex-1 py-6 bg-red-600 rounded-2xl font-black uppercase tracking-widest hover:scale-[1.01] active:scale-95 transition-all shadow-2xl shadow-red-900/20 text-sm">{editingId ? 'Update Lesson' : 'Publish Lesson'}</button>
+                    {editingId && <button type="button" onClick={() => { setEditingId(null); setForm({ title: '', description: '', poster: '', videoUrl: '', videoType: 'youtube', category: [], batchNo: '', featured: false, isPremium: false }); }} className="px-12 bg-white/5 text-white border border-white/10 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-white/10 transition-all">Cancel</button>}
+                  </div>
+                </form>
+              </div>
+            ) : (
+              <div className="bg-gradient-to-br from-[#161616] to-[#0a0a0a] p-12 rounded-[2.5rem] border border-white/5 shadow-2xl relative overflow-hidden group">
+                <div className="absolute top-0 right-0 w-80 h-80 bg-red-600/5 blur-[120px] group-hover:bg-red-600/10 transition-colors"></div>
+                <div className="relative z-10 space-y-8">
+                  <div>
+                    <h3 className="text-4xl font-black uppercase tracking-tighter italic text-red-600">Bulk Upload</h3>
+                    <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mt-1">Import multiple lessons instantly via CSV</p>
+                  </div>
+
+                  <div className="relative p-12 border-2 border-white/5 border-dashed rounded-[2rem] bg-black/20 text-center space-y-6 group/upload cursor-pointer hover:border-red-600/50 transition-all">
+                    <div className="text-5xl mb-2 opacity-20 group-hover/upload:opacity-100 transition-opacity">📁</div>
+                    <p className="text-sm font-black text-gray-500 uppercase group-hover/upload:text-white transition-colors tracking-widest">Select CSV File</p>
+                    <input
+                      type="file"
+                      accept=".csv"
+                      ref={fileInputRef}
+                      onChange={e => {
+                        if (e.target.files[0]) {
+                          setCsvFile(e.target.files[0]);
+                          notify('File selected: ' + e.target.files[0].name, 'success');
+                        }
+                      }}
+                      className="absolute inset-0 opacity-0 cursor-pointer"
+                    />
+                    {csvFile && <p className="text-red-500 font-black text-xs uppercase animate-pulse mt-4">Selected: {csvFile.name}</p>}
+                  </div>
+
+                  <div className="p-8 bg-black/40 border border-white/10 rounded-2xl space-y-4">
+                    <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Required CSV Headers:</p>
+                    <div className="flex flex-wrap gap-2">
+                      {['Title', 'Description', 'Poster', 'VideoUrl', 'VideoType', 'Category', 'BatchNo', 'IsPremium', 'Featured'].map(h => (
+                        <span key={h} className="px-3 py-1 bg-white/5 border border-white/10 rounded-lg text-[10px] font-bold text-gray-400">{h}</span>
+                      ))}
+                    </div>
+                    <button
+                      onClick={async () => {
+                        try {
+                          const res = await axios.get(`${import.meta.env.VITE_API_URL}/admin/movies/sample-csv`, {
+                            ...getAuthHeaders(),
+                            responseType: 'blob'
+                          });
+                          const url = window.URL.createObjectURL(new Blob([res.data]));
+                          const link = document.createElement('a');
+                          link.href = url;
+                          link.setAttribute('download', 'bulk_upload_template.csv');
+                          document.body.appendChild(link);
+                          link.click();
+                        } catch (err) { notify('Failed to download template', 'error'); }
+                      }}
+                      className="text-[10px] font-black text-red-600 uppercase tracking-widest hover:underline pt-2 block"
+                    >
+                      Download CSV Template
+                    </button>
+                  </div>
+
+                  <button
+                    onClick={handleBulkImport}
+                    disabled={!csvFile || isImporting}
+                    className={`w-full py-6 font-black uppercase rounded-2xl shadow-2xl transition-all tracking-widest text-sm flex items-center justify-center gap-4 ${isImporting ? 'bg-gray-800 text-gray-400 cursor-wait' : 'bg-red-600 text-white hover:bg-red-700 shadow-red-900/20'}`}
+                  >
+                    {isImporting ? 'Importing Lessons...' : 'Start Bulk Import'}
+                  </button>
                 </div>
-              </form>
-            </div>
+              </div>
+            )}
 
             <div className="bg-[#161616] rounded-[3rem] border border-white/5 overflow-hidden shadow-2xl">
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="text-[10px] font-black text-gray-500 uppercase tracking-widest border-b border-white/5 bg-black/20">
-                      <th className="p-10">Lesson Details</th>
+                      <th className="p-10 w-20">
+                        <input
+                          type="checkbox"
+                          checked={selectedMovies.length === movies.length && movies.length > 0}
+                          onChange={toggleSelectAll}
+                          className="w-5 h-5 rounded border-white/20 bg-black/40 checked:bg-red-600 focus:ring-0 cursor-pointer transition-colors"
+                        />
+                      </th>
+                      <th className="p-10">
+                        <div className="flex items-center gap-4">
+                          Lesson Details
+                          {selectedMovies.length > 0 && (
+                            <button
+                              onClick={handleBulkDelete}
+                              className="px-4 py-2 bg-red-600 text-white text-[8px] rounded-lg animate-in fade-in slide-in-from-left-4 hover:bg-red-700 transition-colors"
+                            >
+                              Delete ({selectedMovies.length})
+                            </button>
+                          )}
+                        </div>
+                      </th>
                       <th className="p-10">Subscription</th>
                       <th className="p-10">Categories</th>
                       <th className="p-10 text-right">Actions</th>
@@ -235,7 +391,21 @@ export default function Admin() {
                   </thead>
                   <tbody className="divide-y divide-white/5">
                     {movies.map(m => (
-                      <tr key={m._id} className="group hover:bg-white/[0.01] transition-all">
+                      <tr key={m._id} className={`group transition-all ${selectedMovies.includes(m._id) ? 'bg-red-900/10' : 'hover:bg-white/[0.01]'}`}>
+                        <td className="p-10">
+                          <input
+                            type="checkbox"
+                            checked={selectedMovies.includes(m._id)}
+                            onChange={() => {
+                              setSelectedMovies(prev =>
+                                prev.includes(m._id)
+                                  ? prev.filter(id => id !== m._id)
+                                  : [...prev, m._id]
+                              );
+                            }}
+                            className="w-5 h-5 rounded border-white/20 bg-black/40 checked:bg-red-600 focus:ring-0 cursor-pointer transition-colors"
+                          />
+                        </td>
                         <td className="p-10 flex items-center gap-8">
                           <div className="relative w-16 h-24 rounded-2xl overflow-hidden bg-black border border-white/10 group-hover:border-red-600/50 transition-all shadow-xl">
                             <img src={m.poster} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt="" />
@@ -245,8 +415,6 @@ export default function Admin() {
                             <p className="font-black text-white text-lg uppercase tracking-tighter leading-none italic group-hover:text-red-500 transition-colors">{m.title}</p>
                             <div className="flex items-center gap-3">
                               <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{m.batchNo || 'Standard'}</span>
-                              <span className="w-1 h-1 bg-gray-800 rounded-full"></span>
-                              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{m.duration}</span>
                             </div>
                           </div>
                         </td>
@@ -257,7 +425,8 @@ export default function Admin() {
                         </td>
                         <td className="p-10">
                           <div className="flex flex-wrap gap-2 max-w-[250px]">
-                            {m.category?.map(c => <span key={c} className="px-3 py-1 bg-white/5 text-gray-500 text-[8px] font-black rounded-lg border border-white/5 hover:text-white transition-colors">{c}</span>)}
+                            {m.category?.filter(c => !['Action', 'Drama', 'Thriller', 'Sci-Fi', 'Crime', 'History', 'Mystery', 'Romance', 'Adventure', 'Fantasy'].includes(c))
+                              .map(c => <span key={c} className="px-3 py-1 bg-white/5 text-gray-500 text-[8px] font-black rounded-lg border border-white/5 hover:text-white transition-colors">{c}</span>)}
                           </div>
                         </td>
                         <td className="p-10 text-right">
@@ -319,9 +488,16 @@ export default function Admin() {
                         </td>
                         <td className="p-12">
                           <div className="flex flex-wrap gap-1.5 max-w-[300px]">
-                            {u.subscribedCategories?.length > 0 ? u.subscribedCategories.map(c => (
-                              <span key={c} className="px-3 py-1 bg-green-500/5 text-green-500 text-[9px] font-black rounded-lg border border-green-500/20 uppercase tracking-tighter">{c}</span>
-                            )) : <span className="text-[10px] font-bold text-gray-800 italic uppercase tracking-widest">No Category Access</span>}
+                            {u.subscription === 'free' ? (
+                              <span className="text-[10px] font-bold text-gray-800 italic uppercase tracking-widest">No Category Access</span>
+                            ) : u.subscription === 'premium' && u.subscribedCategories?.length >= categories.length ? (
+                              <span className="px-3 py-1 bg-yellow-500/10 text-yellow-500 text-[9px] font-black rounded-lg border border-yellow-500/20 uppercase tracking-tighter">✨ All Modules Access</span>
+                            ) : (
+                              u.subscribedCategories?.length > 0 ?
+                                u.subscribedCategories.map(c => (
+                                  <span key={c} className="px-3 py-1 bg-green-500/5 text-green-500 text-[9px] font-black rounded-lg border border-green-500/20 uppercase tracking-tighter">{c}</span>
+                                )) : <span className="text-[10px] font-bold text-gray-800 italic uppercase tracking-widest">No Category Access</span>
+                            )}
                           </div>
                         </td>
                         <td className="p-12 text-right">
@@ -367,35 +543,7 @@ export default function Admin() {
           </div>
         )}
 
-        {/* Bulk Integration */}
-        {activeTab === 'bulk' && (
-          <div className="bg-gradient-to-br from-[#161616] to-[#0a0a0a] p-20 rounded-[4rem] border border-white/5 max-w-3xl animate-in fade-in duration-500 shadow-2xl relative overflow-hidden group">
-            <div className="absolute top-0 right-0 w-80 h-80 bg-red-600/5 blur-[120px] group-hover:bg-red-600/10 transition-colors"></div>
-            <div className="relative z-10">
-              <h3 className="text-4xl font-black uppercase mb-3 tracking-tighter italic">Bulk Import</h3>
-              <p className="text-[11px] font-black text-gray-600 uppercase tracking-[0.3em] mb-12">Fast Lesson Import via CSV</p>
 
-              <div className="space-y-10">
-                <div className="relative p-12 border-2 border-white/5 border-dashed rounded-[3rem] bg-black/20 text-center space-y-6 group/upload cursor-pointer hover:border-red-600/50 transition-all">
-                  <div className="text-5xl mb-2 opacity-20 group-hover/upload:opacity-100 transition-opacity">⚡</div>
-                  <p className="text-sm font-black text-gray-500 uppercase group-hover/upload:text-white transition-colors tracking-widest">Upload CSV File (.csv)</p>
-                  <input type="file" accept=".csv" onChange={e => setCsvFile(e.target.files[0])} className="absolute inset-0 opacity-0 cursor-pointer" />
-                  {csvFile && <p className="text-red-500 font-black text-xs uppercase animate-pulse mt-4">Linked: {csvFile.name}</p>}
-                </div>
-
-                <div className="p-8 bg-red-600/5 border border-red-600/20 rounded-[2rem] flex gap-6">
-                  <span className="text-2xl">⚠️</span>
-                  <div className="space-y-2">
-                    <p className="text-[11px] font-black text-red-600 uppercase tracking-widest">CSV Instructions</p>
-                    <p className="text-[11px] text-gray-500 leading-relaxed font-bold uppercase">The CSV must have these headers: Title, Description, Poster, VideoUrl, Category, BatchNo, Duration. Incorrect mapping will cause the import to fail.</p>
-                  </div>
-                </div>
-
-                <button onClick={async () => { if (!csvFile) return; const fd = new FormData(); fd.append('file', csvFile); await axios.post(`${import.meta.env.VITE_API_URL}/admin/movies/bulk-csv`, fd, { headers: { ...getAuthHeaders().headers, 'Content-Type': 'multipart/form-data' } }); notify('Lessons imported successfully', 'success'); fetchData(); }} className="w-full py-7 bg-red-600 text-white font-black uppercase rounded-[2.5rem] shadow-2xl hover:scale-[1.02] active:scale-95 transition-all tracking-[0.2em] text-sm">Start Bulk Import</button>
-              </div>
-            </div>
-          </div>
-        )}
       </main>
 
       {/* Access Control Overlay */}
@@ -413,27 +561,48 @@ export default function Admin() {
                 <label className="text-[11px] font-black text-gray-500 uppercase tracking-widest ml-6">Subscription Plan</label>
                 <div className="grid grid-cols-2 gap-4">
                   {['free', 'premium'].map(grade => (
-                    <button key={grade} onClick={() => setUserSubForm({ ...userSubForm, subscription: grade })} className={`py-6 rounded-3xl font-black uppercase text-xs tracking-widest transition-all ${userSubForm.subscription === grade ? 'bg-red-600 text-white shadow-xl shadow-red-900/40 border-transparent' : 'bg-white/5 text-gray-600 border border-white/5 hover:text-white'}`}>
+                    <button
+                      key={grade}
+                      onClick={() => {
+                        const allCategoryNames = categories.map(c => c.name);
+                        setUserSubForm({
+                          subscription: grade,
+                          subscribedCategories: grade === 'premium' ? allCategoryNames : []
+                        });
+                      }}
+                      className={`py-6 rounded-3xl font-black uppercase text-xs tracking-widest transition-all ${userSubForm.subscription === grade ? 'bg-red-600 text-white shadow-xl shadow-red-900/40 border-transparent' : 'bg-white/5 text-gray-600 border border-white/5 hover:text-white'}`}
+                    >
                       {grade === 'free' ? 'Free Plan' : 'Premium Access'}
                     </button>
                   ))}
                 </div>
+                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest text-center mt-4">
+                  {userSubForm.subscription === 'premium'
+                    ? '✨ Premium users get access to ALL current and future modules.'
+                    : '🔒 Free users have no access to paid modules.'}
+                </p>
               </div>
 
-              <div className="space-y-4">
-                <label className="text-[11px] font-black text-gray-500 uppercase tracking-widest ml-6">Category Access</label>
-                <div className="flex flex-wrap gap-2.5 p-8 bg-black/40 rounded-[3rem] border border-white/10 max-h-72 overflow-y-auto scrollbar-hide">
-                  {categories.map(cat => {
-                    const isSel = userSubForm.subscribedCategories.includes(cat.name);
-                    return (
-                      <button key={cat._id} onClick={() => setUserSubForm(p => ({ ...p, subscribedCategories: isSel ? p.subscribedCategories.filter(x => x !== cat.name) : [...p.subscribedCategories, cat.name] }))} className={`px-6 py-3 rounded-2xl text-[10px] font-black uppercase transition-all flex items-center gap-3 ${isSel ? 'bg-white text-black shadow-xl' : 'bg-white/5 text-gray-700 hover:text-white'}`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${isSel ? 'bg-green-500' : 'bg-gray-800'}`}></span>
+              {userSubForm.subscription === 'free' && (
+                <div className="space-y-4">
+                  <label className="text-[11px] font-black text-gray-500 uppercase tracking-widest ml-6">Grant Access To Specific Modules</label>
+                  <div className="flex flex-wrap gap-2 p-6 bg-black/40 rounded-3xl border border-white/5 max-h-[300px] overflow-y-auto custom-scrollbar">
+                    {categories.map(cat => (
+                      <button
+                        key={cat._id}
+                        onClick={() => {
+                          const current = userSubForm.subscribedCategories || [];
+                          const updated = current.includes(cat.name) ? current.filter(c => c !== cat.name) : [...current, cat.name];
+                          setUserSubForm({ ...userSubForm, subscribedCategories: updated });
+                        }}
+                        className={`px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${userSubForm.subscribedCategories?.includes(cat.name) ? 'bg-white text-black' : 'bg-white/5 text-gray-500 hover:text-white'}`}
+                      >
                         {cat.name}
                       </button>
-                    );
-                  })}
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div className="pt-6">
                 <button onClick={() => handleUserUpdate(selectedUser._id)} className="w-full py-7 bg-white text-black font-black uppercase rounded-[2.5rem] shadow-2xl hover:bg-red-600 hover:text-white transition-all tracking-widest text-xs">Save Changes</button>

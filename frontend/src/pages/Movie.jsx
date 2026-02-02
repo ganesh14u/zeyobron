@@ -15,16 +15,7 @@ export default function Movie() {
   const token = localStorage.getItem('token');
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
-  const [dynamicDuration, setDynamicDuration] = useState(null);
 
-  const formatDuration = (seconds) => {
-    if (!seconds) return '';
-    const hrs = Math.floor(seconds / 3600);
-    const mins = Math.floor((seconds % 3600) / 60);
-    const secs = Math.floor(seconds % 60);
-    if (hrs > 0) return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
 
   useEffect(() => {
     const fetchMovie = async () => {
@@ -33,44 +24,84 @@ export default function Movie() {
         const movieData = response.data;
         setMovie(movieData);
 
-        // Fetch related movies from the same category
+        // 1. Initial Fetch of Related Movies
+        let related = [];
         if (movieData.category && movieData.category.length > 0) {
-          const config = token ? {
-            headers: { Authorization: `Bearer ${token}` }
-          } : {};
+          const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+          try {
+            const allMovies = await axios.get(`${import.meta.env.VITE_API_URL}/movies`, config);
 
-          const relatedResponse = await axios.get(
-            `${import.meta.env.VITE_API_URL}/movies`,
-            config
-          );
+            // 1. Get all movies in same category and sort them naturally
+            const categoryMovies = allMovies.data
+              .filter(m => m.category?.some(cat => movieData.category?.includes(cat)))
+              .sort((a, b) => {
+                const aBatch = a.batchNo || "";
+                const bBatch = b.batchNo || "";
+                return aBatch.localeCompare(bBatch, undefined, { numeric: true, sensitivity: 'base' });
+              });
 
-          // Filter related movies: same category, exclude current movie
-          const related = relatedResponse.data.filter(m =>
-            m._id !== id &&
-            m.category?.some(cat => movieData.category.includes(cat))
-          ).slice(0, 12);  // Limit to 12 related videos
+            // 2. Find current movie index
+            const currentIndex = categoryMovies.findIndex(m => m._id === id);
 
+            if (currentIndex !== -1) {
+              const laterVideos = categoryMovies.slice(currentIndex + 1);
+              const earlierVideos = categoryMovies.slice(0, currentIndex);
+              related = [...laterVideos, ...earlierVideos].slice(0, 10);
+            } else {
+              related = categoryMovies.filter(m => m._id !== id).slice(0, 10);
+            }
+          } catch (e) { console.error('Related fetch error', e); }
+        }
+
+        // 2. Access Control & User Refresh
+        if (token) {
+          let userObj = JSON.parse(localStorage.getItem('user') || '{}');
+
+          // Force Refresh User Profile (Backend Check)
+          try {
+            const meRes = await axios.get(`${import.meta.env.VITE_API_URL}/auth/me`, { headers: { Authorization: `Bearer ${token}` } });
+            if (meRes.data) {
+              userObj = meRes.data;
+              localStorage.setItem('user', JSON.stringify(userObj));
+            }
+          } catch (err) { console.error('Profile refresh failed', err); }
+
+          // Define Flags
+          const isAdmin = userObj.role === 'admin';
+          const isPremiumUser = userObj.subscription?.toLowerCase() === 'premium';
+          const isPremiumContent = movieData.isPremium;
+
+          // SHOW ALL RELATED CARDS (Visual access allowed)
+          setRelatedMovies(related);
+
+          // DETERMINE ACCESS
+          if (isAdmin) {
+            setHasAccess(true);
+            setAccessReason('Admin Access');
+          } else if (isPremiumUser) {
+            setHasAccess(true);
+            setAccessReason('Premium Subscription');
+          } else {
+            // Free User
+            if (!isPremiumContent) {
+              setHasAccess(true);
+              setAccessReason('Free Content');
+            } else {
+              setHasAccess(false);
+              setAccessReason('Premium Content is Locked');
+            }
+          }
+
+        } else {
+          // GUEST (No Token)
+          setHasAccess(!movieData.isPremium);
+          // Guests can see related cards but locks apply
           setRelatedMovies(related);
         }
 
-        // Check access if user is logged in
-        if (token) {
-          const accessResponse = await axios.get(
-            `${import.meta.env.VITE_API_URL}/movies/${id}/access`,
-            { headers: { Authorization: `Bearer ${token}` } }
-          );
-          setHasAccess(accessResponse.data.hasAccess);
-          setAccessReason(accessResponse.data.reason);
-        } else {
-          // Not logged in, no access
-          setHasAccess(false);
-        }
       } catch (error) {
         console.error('Error fetching movie:', error);
         if (error.response?.status === 401) {
-          // Token expired or invalid
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
           navigate('/login');
         }
       } finally {
@@ -105,19 +136,19 @@ export default function Movie() {
               Browse Categories
             </button>
 
-            {/* Cinematic Player Frame */}
+            <h1 className="text-xl md:text-2xl font-black text-white tracking-tighter uppercase leading-tight italic pl-2">{movie.title}</h1>
+
             <div className="relative aspect-video rounded-[2.5rem] overflow-hidden bg-[#000] border border-white/5 shadow-2xl group">
               {movie.videoUrl && hasAccess ? (
                 <SecureVideoPlayer
+                  key={movie._id}
                   videoUrl={movie.videoUrl}
                   videoType={movie.videoType || 'direct'}
                   poster={movie.poster}
                   title={movie.title}
-                  onDurationChange={(d) => setDynamicDuration(formatDuration(d))}
                 />
               ) : (
                 <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-[#121212] to-[#050505]">
-                  {/* Abstract Lock UI */}
                   <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]"></div>
                   <div className="relative text-center space-y-8 p-12 max-w-lg">
                     <div className="relative inline-block">
@@ -133,12 +164,16 @@ export default function Movie() {
                     {!token ? (
                       <button onClick={() => navigate('/login')} className="w-full py-4 bg-white text-black font-black uppercase tracking-widest rounded-2xl hover:bg-gray-200 transition-all shadow-xl">Sign In to Unlock</button>
                     ) : (
-                      <div className="p-6 bg-white/5 border border-white/10 rounded-3xl text-left space-y-2">
-                        <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Your Account Permissions</p>
-                        <div className="flex flex-wrap gap-2">
-                          {user.subscribedCategories?.map(c => <span key={c} className="px-3 py-1 bg-green-500/10 text-green-500 text-[9px] font-black rounded-lg border border-green-500/20 uppercase">{c}</span>)}
-                        </div>
-                        <p className="text-xs text-red-500 font-bold mt-4 italic">Contact Admin to enable module: "{movie.category?.[0]}"</p>
+                      <div className="space-y-4">
+                        <button
+                          onClick={() => navigate('/profile')}
+                          className="w-full py-5 bg-gradient-to-r from-red-600 to-red-800 text-white font-black uppercase tracking-widest rounded-2xl hover:scale-[1.02] transition-all shadow-2xl shadow-red-900/40 text-xs"
+                        >
+                          Subscribe to Premium To get Access
+                        </button>
+                        <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">
+                          Unlock all modules instantly
+                        </p>
                       </div>
                     )}
                   </div>
@@ -161,16 +196,6 @@ export default function Movie() {
                   <span className="text-gray-600 font-black text-[10px] uppercase">/</span>
                   <span className="text-gray-400 font-bold text-xs uppercase tracking-tighter">Batch: {movie.batchNo}</span>
                 </div>
-                <h1 className="text-4xl md:text-6xl font-black text-white tracking-tighter uppercase leading-tight italic">{movie.title}</h1>
-                <div className="flex items-center gap-6 text-[10px] font-black text-gray-500 uppercase tracking-widest">
-                  <span className="flex items-center gap-2">⏱️ {dynamicDuration || movie.duration}</span>
-                  <span className="flex items-center gap-2">👁️ HD 4K</span>
-                  <span className="flex items-center gap-2 uppercase">{movie.videoType === 'youtube' ? 'YouTube' : 'Direct'} Link</span>
-                </div>
-              </div>
-              <div className="flex gap-4">
-                <button className="w-14 h-14 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-center text-xl hover:bg-white/10 transition-all" title="Add to List">＋</button>
-                <button className="w-14 h-14 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-center text-xl hover:bg-white/10 transition-all" title="Share Content">↗</button>
               </div>
             </div>
 
@@ -211,10 +236,11 @@ export default function Movie() {
                       </div>
                       <div className="flex-1 py-1 space-y-2">
                         <h4 className="font-black text-white text-sm uppercase tracking-tighter leading-tight line-clamp-2 group-hover:text-red-500 transition-colors">{related.title}</h4>
-                        <div className="flex flex-wrap gap-1">
+                        <div className="flex flex-col gap-1">
                           {related.category?.slice(0, 1).map(c => <span key={c} className="text-[9px] font-bold text-gray-500 uppercase">{c}</span>)}
-                          <span className="text-gray-700 text-[9px]">•</span>
-                          <span className="text-[9px] font-bold text-gray-500 uppercase">{related.duration}</span>
+                          {related.batchNo && (
+                            <span className="text-[8px] font-bold text-gray-600 uppercase tracking-widest">{related.batchNo}</span>
+                          )}
                         </div>
                       </div>
                     </div>

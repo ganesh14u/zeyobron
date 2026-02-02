@@ -59,21 +59,45 @@ router.get('/:id/access', protect, async (req, res) => {
     const movie = await Movie.findById(req.params.id);
     if (!movie) return res.status(404).json({ message: 'Movie not found' });
 
-    // 1. If video is NOT premium, allow all logged-in users
-    if (!movie.isPremium) {
-      return res.json({ hasAccess: true, reason: 'free-lesson' });
+    // 1. Admin Override
+    if (req.user.role === 'admin') {
+      return res.json({ hasAccess: true, reason: 'admin-override' });
     }
 
-    // 2. If video IS premium, check categories
-    const hasCategory = movie.category.some(cat =>
-      req.user.hasAccessToCategory(cat)
-    );
-
-    if (hasCategory) {
-      return res.json({ hasAccess: true, reason: 'category-subscription' });
+    // 2. Premium User Override
+    if ((req.user.subscription || '').toLowerCase() === 'premium') {
+      return res.json({ hasAccess: true, reason: 'premium-plan' });
     }
 
-    res.json({ hasAccess: false, reason: 'premium-required' });
+    // 3. Free User Logic
+    if (movie.isPremium) {
+      // Strict lock: Free users cannot watch premium videos
+      return res.json({ hasAccess: false, reason: 'premium-required' });
+    } else {
+      return res.json({ hasAccess: true, reason: 'free-tier' });
+    }
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Update movie duration automatically - requires auth
+router.put('/:id/duration', protect, async (req, res) => {
+  try {
+    const { duration } = req.body;
+    if (!duration) return res.status(400).json({ message: 'Duration is required' });
+
+    const movie = await Movie.findById(req.params.id);
+    if (!movie) return res.status(404).json({ message: 'Movie not found' });
+
+    // Only update if duration is currently missing or generic '00:00'
+    if (!movie.duration || movie.duration === '00:00') {
+      movie.duration = duration;
+      await movie.save();
+      return res.json({ message: 'Duration updated automatically', duration });
+    }
+
+    res.json({ message: 'Duration already exists', duration: movie.duration });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

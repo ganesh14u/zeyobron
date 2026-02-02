@@ -1,0 +1,6 @@
+Title,Description,Poster,VideoUrl,Category,BatchNo
+Intro to Big Data,Foundations of Apache Hadoop and ecosystems,https://images.unsplash.com/photo-1518770660439-4636190af475,https://www.youtube.com/watch?v=sc25nF3j0hI,Big Data,Session 1
+PySpark for Beginners,Introduction to RDD and DataFrames in Spark,https://images.unsplash.com/photo-1551288049-bebda4e38f71,https://www.youtube.com/watch?v=XcsP649d21c,Big Data,Session 2
+Real-time Analytics,Using Spark Streaming for live data processing,https://images.unsplash.com/photo-1551288049-bebda4e38f71,https://www.youtube.com/watch?v=k5q-F6i5aX4,Big Data,Session 3
+SQL for Data Science,Mastering JOINs and Aggregations,https://images.unsplash.com/photo-1544383835-bda2bc66a55d,https://www.youtube.com/watch?v=7S_tz1z_5bA,SQL,Session 1
+Advanced SQL Queries,Window functions and CTEs explained,https://images.unsplash.com/photo-1544383835-bda2bc66a55d,https://www.youtube.com/watch?v=HXV3zeQKqGY,SQL,Session 2

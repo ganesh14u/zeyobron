@@ -1,9 +1,11 @@
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 
 export default function Navbar() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const isAuthPage = ['/login', '/signup'].includes(location.pathname);
   const [user, setUser] = useState(null);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -277,12 +279,14 @@ export default function Navbar() {
             </div>
           </div>
         ) : (
-          <button
-            onClick={() => navigate('/login')}
-            className="px-6 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-sm font-black text-white shadow-lg hover:shadow-red-900/40 transition-all hover:scale-105 active:scale-95"
-          >
-            SIGN IN
-          </button>
+          !isAuthPage && (
+            <button
+              onClick={() => navigate('/login')}
+              className="px-6 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-sm font-black text-white shadow-lg hover:shadow-red-900/40 transition-all hover:scale-105 active:scale-95"
+            >
+              SIGN IN
+            </button>
+          )
         )}
       </div>
 
@@ -360,12 +364,14 @@ export default function Navbar() {
               <button onClick={() => { handleLogout(); setShowProfileMenu(false); }} className="w-full text-left p-3 hover:bg-red-500/10 rounded-lg text-sm text-red-500 font-bold">Sign Out</button>
             </div>
           ) : (
-            <button
-              onClick={() => { navigate('/login'); setShowProfileMenu(false); }}
-              className="w-full py-3 bg-red-600 text-white font-black uppercase rounded-xl"
-            >
-              Sign In
-            </button>
+            !isAuthPage && (
+              <button
+                onClick={() => { navigate('/login'); setShowProfileMenu(false); }}
+                className="w-full py-3 bg-red-600 text-white font-black uppercase rounded-xl"
+              >
+                Sign In
+              </button>
+            )
           )}
         </div>
       )}
