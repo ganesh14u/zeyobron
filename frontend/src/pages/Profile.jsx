@@ -166,69 +166,112 @@ export default function Profile() {
 
             {/* UPI Payment Modal */}
             {showPaymentModal && (
-              <div className="fixed inset-0 z-[500] flex items-center justify-center px-4 md:px-0">
-                <div className="absolute inset-0 bg-black/90 backdrop-blur-xl" onClick={() => setShowPaymentModal(false)}></div>
-                <div className="relative z-10 w-full max-w-lg bg-[#111] border border-white/10 rounded-[3rem] p-10 md:p-12 shadow-2xl animate-in zoom-in-95 duration-300">
+              <div className="fixed inset-0 z-[200000] flex items-start justify-center p-4 md:p-12 overflow-y-auto bg-black/95 backdrop-blur-3xl pt-24 md:pt-32">
+                <div className="fixed inset-0" onClick={() => setShowPaymentModal(false)}></div>
+
+                <div className="relative z-10 w-full max-w-5xl bg-[#0a0a0a] border border-white/10 rounded-[2rem] md:rounded-[3.5rem] overflow-hidden shadow-[0_0_100px_rgba(220,38,38,0.2)] animate-in slide-in-from-bottom-12 duration-500 mb-20">
                   <button
                     onClick={() => setShowPaymentModal(false)}
-                    className="absolute top-8 right-8 w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center hover:bg-white/10 transition-all text-xl"
+                    className="absolute top-8 right-8 w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center hover:bg-red-600 transition-all text-xl z-20 group"
                   >
-                    ✕
+                    <span className="group-hover:rotate-90 transition-transform">✕</span>
                   </button>
 
-                  <div className="space-y-8 text-center">
-                    <div className="space-y-2">
-                      <div className="w-20 h-20 bg-red-600/10 rounded-3xl flex items-center justify-center text-4xl mx-auto mb-4">🛡️</div>
-                      <h3 className="text-3xl font-black uppercase tracking-tighter italic text-white leading-none">Complete Upgrade</h3>
-                      <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest">Premium Lifetime Access</p>
-                    </div>
+                  <div className="flex flex-col lg:flex-row min-h-[600px]">
+                    {/* Left Side: Value Prop */}
+                    <div className="lg:w-1/2 p-12 md:p-16 bg-gradient-to-br from-[#111] to-black relative overflow-hidden flex flex-col justify-between">
+                      <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_0%_0%,rgba(220,38,38,0.15),transparent)]"></div>
 
-                    <div className="p-8 bg-black/40 rounded-[2rem] border border-white/5 space-y-4">
-                      <div className="flex justify-between items-center text-gray-400 text-[10px] font-black uppercase tracking-widest">
-                        <span>One-Time Investment</span>
-                        <span className="text-white text-lg">₹20,000/-</span>
-                      </div>
-                      <div className="h-px bg-white/5 w-full"></div>
-                      <div className="space-y-4 pt-2">
-                        <p className="text-[9px] text-red-500 font-bold uppercase tracking-widest italic animate-pulse">Scan or Pay via UPI to confirm</p>
-
-                        {/* Actual UPI Details & QR Code */}
-                        <div className="space-y-6">
-                          <div className="bg-white rounded-3xl p-4 shadow-2xl overflow-hidden group/qr max-w-[200px] mx-auto">
-                            <img
-                              src="/qr-code.jpg"
-                              alt="UPI QR Code"
-                              className="w-full h-auto rounded-2xl group-hover:scale-110 transition-transform duration-700"
-                            />
-                          </div>
-
-                          <div className="p-6 bg-white/5 border border-white/10 rounded-2xl space-y-3">
-                            <div className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Payable via UPI ID</div>
-                            <div className="text-xl font-bold text-white tracking-tight break-all">sbi14u@ybl</div>
-                          </div>
+                      <div className="relative z-10 space-y-8">
+                        <div className="inline-flex items-center gap-3 px-4 py-2 bg-red-600/10 border border-red-600/20 rounded-xl">
+                          <span className="w-2 h-2 bg-red-600 rounded-full animate-pulse"></span>
+                          <span className="text-[10px] font-black text-red-500 uppercase tracking-[0.2em]">Unlimited Access</span>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-3">
-                          {['GPay', 'PhonePe', 'Paytm', 'WhatsApp'].map(app => (
-                            <button key={app} className="py-4 bg-white/5 border border-white/10 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-white/10 transition-colors">
-                              {app}
-                            </button>
+                        <div className="space-y-4">
+                          <h3 className="text-4xl md:text-5xl font-black uppercase tracking-tighter italic text-white leading-[0.9]">
+                            Upgrade to <br />
+                            <span className="text-red-600">Premium Elite</span>
+                          </h3>
+                          <p className="text-gray-500 text-sm font-medium leading-relaxed max-w-xs">
+                            Master the industry with lifetime access to all core sessions and future updates.
+                          </p>
+                        </div>
+
+                        <ul className="space-y-4">
+                          {[
+                            'Lifetime Access to All Lessons',
+                            'Exclusive Premium Content',
+                            'Direct Path to Advanced Modules',
+                            'Dedicated Student Support',
+                            'Offline Learning Resources'
+                          ].map((feature, i) => (
+                            <li key={i} className="flex items-center gap-4 group">
+                              <span className="w-6 h-6 rounded-lg bg-green-500/10 border border-green-500/20 flex items-center justify-center text-[10px] text-green-500">✓</span>
+                              <span className="text-xs font-bold text-gray-300 group-hover:text-white transition-colors">{feature}</span>
+                            </li>
                           ))}
+                        </ul>
+                      </div>
+
+                      <div className="relative z-10 pt-12 border-t border-white/5">
+                        <div className="flex items-end gap-3">
+                          <span className="text-5xl font-black text-white tracking-tighter italic">₹20,000</span>
+                          <span className="text-gray-600 text-[10px] font-black uppercase tracking-widest pb-2">/ Lifetime Access</span>
                         </div>
                       </div>
                     </div>
 
-                    <div className="space-y-4">
-                      <p className="text-[9px] text-gray-600 font-medium uppercase tracking-[0.2em]">Once paid, please wait for automatic confirmation or contact support with your transaction ID.</p>
-                      <button
-                        onClick={() => {
-                          const upiUrl = `upi://pay?pa=sbi14u@ybl&pn=Zeyobron&am=20000&cu=INR`;
-                          window.open(upiUrl, '_blank');
-                        }}
-                        className="w-full py-5 bg-red-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-red-700 transition-all shadow-xl shadow-red-900/40"
-                      >
-                        Open UPI App
-                      </button>
+                    {/* Right Side: Payment Methods */}
+                    <div className="lg:w-1/2 p-12 md:p-16 bg-[#0a0a0a] flex flex-col justify-center items-center text-center space-y-8">
+                      <div className="space-y-2">
+                        <h4 className="text-xl font-black uppercase tracking-tighter italic text-white">Secure Payment</h4>
+                        <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Scan QR or use UPI App</p>
+                      </div>
+
+                      <div className="relative group/qr">
+                        <div className="absolute -inset-4 bg-red-600/20 blur-2xl rounded-full opacity-0 group-hover/qr:opacity-100 transition-opacity"></div>
+                        <div className="relative bg-white p-6 rounded-[3rem] shadow-2xl overflow-hidden max-w-[220px] transform hover:scale-[1.05] transition-transform duration-500">
+                          <img
+                            src="/qr-code.jpg"
+                            alt="Scan to Pay"
+                            className="w-full h-auto rounded-2xl"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="w-full space-y-4">
+                        <div
+                          className="p-5 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-between group cursor-pointer active:scale-95 transition-all"
+                          onClick={() => {
+                            navigator.clipboard.writeText('sbi14u@ybl');
+                            setSuccess('UPI ID Copied!');
+                            setTimeout(() => setSuccess(''), 2000);
+                          }}
+                        >
+                          <div className="text-left">
+                            <p className="text-[8px] font-black text-gray-500 uppercase tracking-[0.2em] mb-1">Payment UPI ID</p>
+                            <p className="text-sm font-bold text-white tracking-tight">sbi14u@ybl</p>
+                          </div>
+                          <span className="text-[10px] font-black text-red-600 uppercase tracking-widest group-hover:translate-x-1 transition-transform">Copy →</span>
+                        </div>
+
+                        <button
+                          onClick={() => {
+                            const upiUrl = `upi://pay?pa=sbi14u@ybl&pn=Zeyobron&am=20000&cu=INR`;
+                            window.open(upiUrl, '_blank');
+                          }}
+                          className="w-full py-5 bg-red-600 text-white font-black uppercase text-xs tracking-[0.2em] rounded-2xl hover:bg-red-700 transition-all shadow-xl shadow-red-900/40 active:scale-95 flex items-center justify-center gap-3"
+                        >
+                          <span>📱</span> PAY VIA UPI APP
+                        </button>
+                      </div>
+
+                      <div className="flex items-center gap-4 opacity-30 grayscale hover:grayscale-0 transition-all duration-700">
+                        {['GPay', 'PhonePe', 'Paytm'].map(app => (
+                          <span key={app} className="text-[8px] font-black uppercase tracking-widest border border-white/20 px-3 py-1 rounded-md">{app}</span>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 </div>
