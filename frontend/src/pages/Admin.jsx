@@ -149,6 +149,18 @@ export default function Admin() {
     }
   };
 
+  const handleResetPayments = async () => {
+    if (await confirm('CRITICAL: Are you sure you want to PERMANENTLY reset all payment data? This will clear total revenue and recent sales history. This action cannot be undone.')) {
+      try {
+        await axios.delete(`${API_URL}/admin/payments/reset`, getAuthHeaders());
+        notify('Payment history has been cleared', 'success');
+        fetchData();
+      } catch (err) {
+        notify(err.response?.data?.message || err.message, 'error');
+      }
+    }
+  };
+
   const [selectedMovies, setSelectedMovies] = useState([]);
 
   const toggleSelectAll = () => {
@@ -221,6 +233,14 @@ export default function Admin() {
               {activeTab === 'lessons' ? 'Lessons' : activeTab}
             </h1>
           </div>
+          {activeTab === 'overview' && (
+            <button
+              onClick={handleResetPayments}
+              className="px-6 py-3 bg-red-600/10 text-red-500 border border-red-600/20 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-red-600 hover:text-white transition-all shadow-lg flex items-center gap-2"
+            >
+              <span>🧹</span> Reset Payment Data
+            </button>
+          )}
         </header>
 
         {activeTab === 'overview' && (

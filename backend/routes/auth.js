@@ -13,17 +13,17 @@ router.post('/signup', async (req, res) => {
   const existing = await User.findOne({ email });
   if (existing) return res.status(400).json({ message: 'Email exists' });
   const hashed = await bcrypt.hash(password, 10);
-  
+
   // New users get "Big Data Free" category by default
-  const user = await User.create({ 
-    name, 
-    email, 
-    phone, 
+  const user = await User.create({
+    name,
+    email,
+    phone,
     password: hashed,
     subscribedCategories: ['Big Data Free'],
     subscription: 'free'
   });
-  
+
   // Send welcome email
   try {
     await sendWelcomeEmail(email, name);
@@ -31,20 +31,20 @@ router.post('/signup', async (req, res) => {
     console.error('Welcome email failed:', emailError);
     // Don't fail signup if email fails
   }
-  
+
   const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET);
-  res.json({ 
-    token, 
-    user: { 
-      id: user._id, 
-      name: user.name, 
+  res.json({
+    token,
+    user: {
+      id: user._id,
+      name: user.name,
       email: user.email,
       phone: user.phone,
       role: user.role,
       subscription: user.subscription,
       subscribedCategories: user.subscribedCategories,
       isActive: user.isActive
-    } 
+    }
   });
 });
 
@@ -52,26 +52,26 @@ router.post('/login', async (req, res) => {
   const { email, password } = req.body;
   const user = await User.findOne({ email });
   if (!user) return res.status(400).json({ message: 'Invalid credentials' });
-  
+
   if (!user.isActive) {
     return res.status(403).json({ message: 'Account deactivated. Contact admin.' });
   }
-  
+
   const ok = await bcrypt.compare(password, user.password);
   if (!ok) return res.status(400).json({ message: 'Invalid credentials' });
   const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
-  res.json({ 
-    token, 
-    user: { 
-      id: user._id, 
-      name: user.name, 
+  res.json({
+    token,
+    user: {
+      id: user._id,
+      name: user.name,
       email: user.email,
       phone: user.phone,
       role: user.role,
       subscription: user.subscription,
       subscribedCategories: user.subscribedCategories,
       isActive: user.isActive
-    } 
+    }
   });
 });
 
@@ -80,7 +80,7 @@ router.post('/forgot-password', async (req, res) => {
   try {
     const { email } = req.body;
     const user = await User.findOne({ email });
-    
+
     if (!user) {
       return res.status(404).json({ message: 'No account with that email exists' });
     }
@@ -88,7 +88,7 @@ router.post('/forgot-password', async (req, res) => {
     // Generate reset token
     const resetToken = crypto.randomBytes(32).toString('hex');
     const resetPasswordToken = crypto.createHash('sha256').update(resetToken).digest('hex');
-    
+
     user.resetPasswordToken = resetPasswordToken;
     user.resetPasswordExpires = Date.now() + 3600000; // 1 hour
     await user.save();
@@ -96,14 +96,14 @@ router.post('/forgot-password', async (req, res) => {
     // Send email with reset link
     try {
       await sendPasswordResetEmail(user.email, resetToken, user.name);
-      res.json({ 
+      res.json({
         message: 'Password reset link sent to your email',
         // Don't send the actual URL in production for security
       });
     } catch (emailError) {
       // If email fails, still return success to prevent email enumeration
       console.error('Email sending failed:', emailError);
-      res.json({ 
+      res.json({
         message: 'Password reset link sent to your email'
       });
     }
@@ -158,7 +158,7 @@ router.get('/me', protect, async (req, res) => {
 router.put('/update-profile', protect, async (req, res) => {
   try {
     const { name, phone } = req.body;
-    
+
     const user = await User.findById(req.user._id);
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
@@ -175,10 +175,38 @@ router.put('/update-profile', protect, async (req, res) => {
     delete updatedUser.resetPasswordToken;
     delete updatedUser.resetPasswordExpires;
 
-    res.json({ 
+    res.json({
       message: 'Profile updated successfully',
       user: updatedUser
     });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Change password (protected route)
+router.put('/change-password', protect, async (req, res) => {
+  try {
+    const { password, confirmPassword } = req.body;
+
+    if (!password || !confirmPassword) {
+      return res.status(400).json({ message: 'Please provide both password fields' });
+    }
+
+    if (password !== confirmPassword) {
+      return res.status(400).json({ message: 'Passwords do not match' });
+    }
+
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const hashed = await bcrypt.hash(password, 10);
+    user.password = hashed;
+    await user.save();
+
+    res.json({ message: 'Password changed successfully' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

@@ -17,6 +17,11 @@ export default function Profile() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [passwordData, setPasswordData] = useState({
+    password: '',
+    confirmPassword: ''
+  });
 
   // Fetch fresh user data
   const fetchUserData = async () => {
@@ -95,6 +100,36 @@ export default function Profile() {
       setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to update profile');
+    }
+  };
+
+  const handlePasswordChange = async (e) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+
+    if (passwordData.password !== passwordData.confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      await axios.put(
+        `${API_URL}/auth/change-password`,
+        passwordData,
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+
+      setSuccess('Password changed successfully!');
+      setIsChangingPassword(false);
+      setPasswordData({ password: '', confirmPassword: '' });
+
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to change password');
     }
   };
 
@@ -330,59 +365,71 @@ export default function Profile() {
               <div className="bg-black/20 rounded-[2.5rem] p-8 md:p-10 border border-white/5">
                 <div className="flex items-center justify-between mb-8">
                   <h3 className="text-sm font-black text-gray-500 uppercase tracking-widest">Personal Information</h3>
-                  {!isEditing && (
-                    <button
-                      onClick={() => setIsEditing(true)}
-                      className="px-6 py-3 bg-white text-black rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-gray-200 transition-all shadow-lg hover:scale-105"
-                    >
-                      Edit Details
-                    </button>
-                  )}
+                  <div className="flex gap-4">
+                    {!isEditing && !isChangingPassword && (
+                      <>
+                        <button
+                          onClick={() => {
+                            setIsEditing(true);
+                            setIsChangingPassword(false);
+                          }}
+                          className="px-6 py-3 bg-white text-black rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-gray-200 transition-all shadow-lg hover:scale-105"
+                        >
+                          Edit Details
+                        </button>
+                        <button
+                          onClick={() => {
+                            setIsChangingPassword(true);
+                            setIsEditing(false);
+                          }}
+                          className="px-6 py-3 bg-white/5 text-white border border-white/10 rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-white/10 transition-all shadow-lg hover:scale-105"
+                        >
+                          Change Password
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
 
-                <form onSubmit={handleUpdate} className="space-y-8">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div className="space-y-3">
-                      <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-4">Full Name</label>
-                      <input
-                        type="text"
-                        disabled={!isEditing}
-                        value={formData.name}
-                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                        className={`w-full px-8 py-5 rounded-2xl font-bold transition-all outline-none text-sm ${isEditing ? 'bg-black/40 border border-white/10 focus:border-red-600 text-white' : 'bg-transparent border border-transparent text-gray-400 pl-0 text-lg'}`}
-                      />
+                {isChangingPassword ? (
+                  <form onSubmit={handlePasswordChange} className="space-y-8 animate-in fade-in duration-500">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      <div className="space-y-3">
+                        <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-4">New Password</label>
+                        <input
+                          type="password"
+                          placeholder="••••••••"
+                          value={passwordData.password}
+                          onChange={(e) => setPasswordData({ ...passwordData, password: e.target.value })}
+                          className="w-full px-8 py-5 rounded-2xl font-bold bg-black/40 border border-white/10 focus:border-red-600 text-white transition-all outline-none text-sm"
+                          required
+                        />
+                      </div>
+                      <div className="space-y-3">
+                        <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-4">Confirm New Password</label>
+                        <input
+                          type="password"
+                          placeholder="••••••••"
+                          value={passwordData.confirmPassword}
+                          onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                          className="w-full px-8 py-5 rounded-2xl font-bold bg-black/40 border border-white/10 focus:border-red-600 text-white transition-all outline-none text-sm"
+                          required
+                        />
+                      </div>
                     </div>
 
-                    <div className="space-y-3">
-                      <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-4">Phone Number</label>
-                      <input
-                        type="tel"
-                        disabled={!isEditing}
-                        value={formData.phone || ''}
-                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                        placeholder={isEditing ? "Enter phone number" : "Not set"}
-                        className={`w-full px-8 py-5 rounded-2xl font-bold transition-all outline-none text-sm ${isEditing ? 'bg-black/40 border border-white/10 focus:border-red-600 text-white' : 'bg-transparent border border-transparent text-gray-400 pl-0 text-lg'}`}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Status Messages */}
-                  {error && <div className="p-4 bg-red-600/10 border border-red-600/20 text-red-500 rounded-xl text-center text-xs font-black uppercase tracking-widest animate-pulse">{error}</div>}
-                  {success && <div className="p-4 bg-green-500/10 border border-green-500/20 text-green-500 rounded-xl text-center text-xs font-black uppercase tracking-widest">{success}</div>}
-
-                  {isEditing && (
                     <div className="flex gap-4 pt-4 border-t border-white/5">
                       <button
                         type="submit"
                         className="py-5 px-10 bg-red-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-red-700 transition-all shadow-xl hover:shadow-red-900/20 hover:scale-[1.02]"
                       >
-                        Save Changes
+                        Update Password
                       </button>
                       <button
                         type="button"
                         onClick={() => {
-                          setIsEditing(false);
-                          setFormData({ name: user.name || '', phone: user.phone || '' });
+                          setIsChangingPassword(false);
+                          setPasswordData({ password: '', confirmPassword: '' });
                           setError('');
                         }}
                         className="py-5 px-10 bg-white/5 text-gray-400 rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-white/10 hover:text-white transition-all"
@@ -390,8 +437,61 @@ export default function Profile() {
                         Cancel
                       </button>
                     </div>
-                  )}
-                </form>
+                  </form>
+                ) : (
+                  <form onSubmit={handleUpdate} className="space-y-8">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      <div className="space-y-3">
+                        <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-4">Full Name</label>
+                        <input
+                          type="text"
+                          disabled={!isEditing}
+                          value={formData.name}
+                          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                          className={`w-full px-8 py-5 rounded-2xl font-bold transition-all outline-none text-sm ${isEditing ? 'bg-black/40 border border-white/10 focus:border-red-600 text-white' : 'bg-transparent border border-transparent text-gray-400 pl-0 text-lg'}`}
+                        />
+                      </div>
+
+                      <div className="space-y-3">
+                        <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-4">Phone Number</label>
+                        <input
+                          type="tel"
+                          disabled={!isEditing}
+                          value={formData.phone || ''}
+                          onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                          placeholder={isEditing ? "Enter phone number" : "Not set"}
+                          className={`w-full px-8 py-5 rounded-2xl font-bold transition-all outline-none text-sm ${isEditing ? 'bg-black/40 border border-white/10 focus:border-red-600 text-white' : 'bg-transparent border border-transparent text-gray-400 pl-0 text-lg'}`}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Status Messages */}
+                    {error && <div className="p-4 bg-red-600/10 border border-red-600/20 text-red-500 rounded-xl text-center text-xs font-black uppercase tracking-widest animate-pulse">{error}</div>}
+                    {success && <div className="p-4 bg-green-500/10 border border-green-500/20 text-green-500 rounded-xl text-center text-xs font-black uppercase tracking-widest">{success}</div>}
+
+                    {isEditing && (
+                      <div className="flex gap-4 pt-4 border-t border-white/5">
+                        <button
+                          type="submit"
+                          className="py-5 px-10 bg-red-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-red-700 transition-all shadow-xl hover:shadow-red-900/20 hover:scale-[1.02]"
+                        >
+                          Save Changes
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsEditing(false);
+                            setFormData({ name: user.name || '', phone: user.phone || '' });
+                            setError('');
+                          }}
+                          className="py-5 px-10 bg-white/5 text-gray-400 rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-white/10 hover:text-white transition-all"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    )}
+                  </form>
+                )}
               </div>
 
               {/* Stats Grid */}

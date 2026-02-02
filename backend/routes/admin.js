@@ -223,6 +223,16 @@ router.get('/stats', protect, adminOnly, async (req, res) => {
   }
 });
 
+// Reset all payment data
+router.delete('/payments/reset', protect, adminOnly, async (req, res) => {
+  try {
+    await Payment.deleteMany({});
+    res.json({ message: 'Payment history reset successfully' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 // Update user subscription (removed expiry)
 router.put('/user/:id/subscription', protect, adminOnly, async (req, res) => {
   try {
