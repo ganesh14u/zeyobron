@@ -3,18 +3,40 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-// Create transporter
-const getTransporter = async () => {
+// Create transporter singleton
+let transporter;
+
+const initTransporter = async () => {
+    if (transporter) return transporter;
+
     const user = process.env.EMAIL_USER;
     const pass = process.env.EMAIL_PASS;
     const host = process.env.EMAIL_HOST;
     const port = process.env.EMAIL_PORT || 587;
 
-    // 1. If no credentials, use Ethereal (Free/Development)
-    if (!user || !pass) {
+    console.log(`📧 Initializing Mailer: ${host || 'Gmail Service'}`);
+
+    if (user && pass) {
+        if (host) {
+            transporter = nodemailer.createTransport({
+                host,
+                port,
+                secure: port == 465,
+                auth: { user, pass },
+                pool: true, // Use pooling for better performance
+                maxConnections: 5,
+            });
+        } else {
+            transporter = nodemailer.createTransport({
+                service: 'gmail',
+                auth: { user, pass }
+            });
+        }
+    } else {
+        // Only create test account if we absolutely have to, and cache it
+        console.warn('⚠️ No email credentials found. Falling back to test service.');
         const testAccount = await nodemailer.createTestAccount();
-        console.log('📧 Falling back to Ethereal Email. Check console for links!');
-        return nodemailer.createTransport({
+        transporter = nodemailer.createTransport({
             host: "smtp.ethereal.email",
             port: 587,
             secure: false,
@@ -25,31 +47,20 @@ const getTransporter = async () => {
         });
     }
 
-    // 2. Use Custom SMTP (Brevo, etc.) if host is provided
-    if (host) {
-        return nodemailer.createTransport({
-            host,
-            port,
-            secure: port === 465,
-            auth: { user, pass },
-        });
-    }
-
-    // 3. Fallback to Gmail
-    return nodemailer.createTransport({
-        service: 'gmail',
-        auth: { user, pass }
-    });
+    return transporter;
 };
+
+// Immediate initialization
+initTransporter().catch(err => console.error('Mailer Init Failed:', err));
 
 // Send password reset email
 export const sendPasswordResetEmail = async (email, resetToken, userName) => {
     try {
-        const transporter = await getTransporter();
+        const transporter = await initTransporter();
 
         const clientUrl = process.env.CLIENT_URL || 'https://datasai.netlify.app';
         const resetUrl = `${clientUrl}/reset-password/${resetToken}`;
-        const fromEmail = process.env.EMAIL_FROM || process.env.EMAIL_USER || 'support@datasai.com';
+        const fromEmail = process.env.EMAIL_FROM || 'paladugusaiganesh@gmail.com'; // Using validated sender
 
         const mailOptions = {
             from: `"Data Sai Support" <${fromEmail}>`,
@@ -155,8 +166,8 @@ export const sendPasswordResetEmail = async (email, resetToken, userName) => {
 // Send welcome email
 export const sendWelcomeEmail = async (email, userName) => {
     try {
-        const transporter = await getTransporter();
-        const fromEmail = process.env.EMAIL_FROM || process.env.EMAIL_USER || 'welcome@datasai.com';
+        const transporter = await initTransporter();
+        const fromEmail = process.env.EMAIL_FROM || 'paladugusaiganesh@gmail.com';
 
         const mailOptions = {
             from: `"Data Sai Team" <${fromEmail}>`,
