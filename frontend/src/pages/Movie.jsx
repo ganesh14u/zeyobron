@@ -219,7 +219,12 @@ export default function Movie() {
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-1 gap-6">
               {relatedMovies.length > 0 ? (
                 relatedMovies.map(related => {
-                  const hasRelAccess = related.category?.some(cat => user.subscribedCategories?.includes(cat));
+                  const isAdmin = user.role === 'admin';
+                  const isPremiumUser = user.subscription?.toLowerCase() === 'premium';
+                  const isFreeContent = !related.isPremium;
+                  const hasSubscribed = related.category?.some(cat => user.subscribedCategories?.includes(cat));
+
+                  const hasRelAccess = isAdmin || isPremiumUser || isFreeContent || hasSubscribed;
                   return (
                     <div
                       key={related._id}
