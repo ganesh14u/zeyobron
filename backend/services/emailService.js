@@ -47,7 +47,8 @@ export const sendPasswordResetEmail = async (email, resetToken, userName) => {
     try {
         const transporter = await getTransporter();
 
-        const resetUrl = `${process.env.CLIENT_URL}/reset-password/${resetToken}`;
+        const clientUrl = process.env.CLIENT_URL || 'https://datasai.netlify.app';
+        const resetUrl = `${clientUrl}/reset-password/${resetToken}`;
         const fromEmail = process.env.EMAIL_FROM || process.env.EMAIL_USER || 'support@datasai.com';
 
         const mailOptions = {
