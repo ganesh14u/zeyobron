@@ -12,6 +12,7 @@ import Profile from './pages/Profile';
 import Navbar from './components/Navbar';
 import Notification from './components/Notification';
 import ConfirmDialog from './components/ConfirmDialog';
+import { API_URL } from './config';
 
 export default function App() {
   const location = useLocation();
@@ -21,7 +22,8 @@ export default function App() {
   useEffect(() => {
     const checkHealth = async () => {
       try {
-        await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/health`);
+        await axios.get(`${API_URL}/health`);
+
         setIsBackendLive(true);
       } catch (err) {
         setIsBackendLive(false);

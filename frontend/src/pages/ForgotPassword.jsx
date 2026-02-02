@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useNotification } from '../components/Notification';
+import { API_URL } from '../config';
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('');
@@ -15,7 +16,7 @@ export default function ForgotPassword() {
     setLoading(true);
 
     try {
-      await axios.post(`${import.meta.env.VITE_API_URL}/auth/forgot-password`, { email });
+      await axios.post(`${API_URL}/auth/forgot-password`, { email });
       setSubmitted(true);
       notify('Password reset email sent', 'success');
     } catch (error) {

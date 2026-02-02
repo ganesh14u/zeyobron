@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import MovieCard from '../components/MovieCard';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { API_URL } from '../config';
 
 export default function Category() {
   const { categoryName } = useParams();
@@ -23,7 +24,7 @@ export default function Category() {
         } : {};
 
         const response = await axios.get(
-          `${import.meta.env.VITE_API_URL}/movies`,
+          `${API_URL}/movies`,
           config
         );
 

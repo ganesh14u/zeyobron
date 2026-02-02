@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 import { useNotification } from '../components/Notification';
+import { API_URL } from '../config';
 
 export default function ResetPassword() {
   const { token } = useParams();
@@ -35,7 +36,7 @@ export default function ResetPassword() {
     setLoading(true);
 
     try {
-      await axios.post(`${import.meta.env.VITE_API_URL}/auth/reset-password/${token}`, { password });
+      await axios.post(`${API_URL}/auth/reset-password/${token}`, { password });
       setResetSuccess(true);
       notify('Password updated successfully', 'success');
     } catch (error) {

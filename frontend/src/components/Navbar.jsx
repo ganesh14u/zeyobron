@@ -1,6 +1,7 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import axios from 'axios';
+import { API_URL } from '../config';
 
 export default function Navbar() {
   const navigate = useNavigate();
@@ -20,7 +21,7 @@ export default function Navbar() {
       if (!token) return;
 
       const response = await axios.get(
-        `${import.meta.env.VITE_API_URL}/auth/me`,
+        `${API_URL}/auth/me`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
@@ -78,7 +79,7 @@ export default function Navbar() {
       try {
         const token = localStorage.getItem('token');
         const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
-        const response = await axios.get(`${import.meta.env.VITE_API_URL}/movies?q=${encodeURIComponent(searchQuery)}`, config);
+        const response = await axios.get(`${API_URL}/movies?q=${encodeURIComponent(searchQuery)}`, config);
         setSearchResults(response.data.slice(0, 5));
         setShowSearchResults(true);
       } catch (error) {

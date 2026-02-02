@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import axios from 'axios';
 import SecureVideoPlayer from '../components/SecureVideoPlayer';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { API_URL } from '../config';
 
 export default function Movie() {
   const { id } = useParams();
@@ -20,7 +21,7 @@ export default function Movie() {
   useEffect(() => {
     const fetchMovie = async () => {
       try {
-        const response = await axios.get(`${import.meta.env.VITE_API_URL}/movies/${id}`);
+        const response = await axios.get(`${API_URL}/movies/${id}`);
         const movieData = response.data;
         setMovie(movieData);
 
@@ -29,7 +30,7 @@ export default function Movie() {
         if (movieData.category && movieData.category.length > 0) {
           const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
           try {
-            const allMovies = await axios.get(`${import.meta.env.VITE_API_URL}/movies`, config);
+            const allMovies = await axios.get(`${API_URL}/movies`, config);
 
             // 1. Get all movies in same category and sort them naturally
             const categoryMovies = allMovies.data
@@ -59,7 +60,7 @@ export default function Movie() {
 
           // Force Refresh User Profile (Backend Check)
           try {
-            const meRes = await axios.get(`${import.meta.env.VITE_API_URL}/auth/me`, { headers: { Authorization: `Bearer ${token}` } });
+            const meRes = await axios.get(`${API_URL}/auth/me`, { headers: { Authorization: `Bearer ${token}` } });
             if (meRes.data) {
               userObj = meRes.data;
               localStorage.setItem('user', JSON.stringify(userObj));

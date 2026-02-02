@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useNotification } from '../components/Notification';
+import { API_URL } from '../config';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -24,7 +25,7 @@ export default function Login() {
     try {
       const endpoint = isSignUp ? '/auth/signup' : '/auth/login';
       const response = await axios.post(
-        `${import.meta.env.VITE_API_URL}${endpoint}`,
+        `${API_URL}${endpoint}`,
         formData
       );
 

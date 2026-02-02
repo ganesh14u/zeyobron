@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { API_URL, RAZORPAY_KEY_ID } from '../config';
 
 export default function Profile() {
   const navigate = useNavigate();
@@ -27,7 +28,7 @@ export default function Profile() {
       }
 
       const response = await axios.get(
-        `${import.meta.env.VITE_API_URL}/auth/me`,
+        `${API_URL}/auth/me`,
         {
           headers: { Authorization: `Bearer ${token}` }
         }
@@ -72,7 +73,7 @@ export default function Profile() {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.put(
-        `${import.meta.env.VITE_API_URL}/auth/update-profile`,
+        `${API_URL}/auth/update-profile`,
         formData,
         {
           headers: { Authorization: `Bearer ${token}` }
@@ -94,6 +95,70 @@ export default function Profile() {
       setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to update profile');
+    }
+  };
+
+  const handleRazorpayPayment = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      // 1. Create order on backend
+      const orderRes = await axios.post(
+        `${API_URL}/payment/order`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      const { id: order_id, amount, currency } = orderRes.data;
+
+      // 2. Open Razorpay Checkout
+      const options = {
+        key: RAZORPAY_KEY_ID || 'rzp_test_placeholder', // Should be in .env
+        amount: amount,
+        currency: currency,
+        name: "Data Sai Premium",
+        description: "Lifetime Elite Access",
+        order_id: order_id,
+        handler: async function (response) {
+          try {
+            // 3. Verify payment on backend
+            const verifyRes = await axios.post(
+              `${API_URL}/payment/verify`,
+              {
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+              },
+              { headers: { Authorization: `Bearer ${token}` } }
+            );
+
+            if (verifyRes.data.success) {
+              setSuccess('Welcome to Premium Elite!');
+              setShowPaymentModal(false);
+              fetchUserData(); // Refresh user state
+            }
+          } catch (err) {
+            setError('Payment verification failed. Please contact support.');
+          }
+        },
+        prefill: {
+          name: user.name,
+          email: user.email,
+          contact: user.phone || '',
+        },
+        theme: {
+          color: "#dc2626", // Red 600
+        },
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.open();
+
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Failed to initiate payment. Check your Razorpay keys and Internet.';
+      setError(msg);
+      console.error('Payment Error:', err);
     }
   };
 
@@ -223,53 +288,29 @@ export default function Profile() {
                     </div>
 
                     {/* Right Side: Payment Methods */}
-                    <div className="lg:w-1/2 p-12 md:p-16 bg-[#0a0a0a] flex flex-col justify-center items-center text-center space-y-8">
-                      <div className="space-y-2">
-                        <h4 className="text-xl font-black uppercase tracking-tighter italic text-white">Secure Payment</h4>
-                        <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Scan QR or use UPI App</p>
+                    <div className="lg:w-1/2 p-12 md:p-16 bg-[#0a0a0a] flex flex-col justify-center items-center text-center space-y-12">
+                      <div className="space-y-4">
+                        <div className="w-20 h-20 bg-red-600/10 rounded-3xl flex items-center justify-center text-4xl mx-auto mb-6">💳</div>
+                        <h4 className="text-2xl font-black uppercase tracking-tighter italic text-white">Instant Activation</h4>
+                        <p className="text-[10px] text-gray-500 font-bold uppercase tracking-[0.3em]">Secure Automated Payment</p>
                       </div>
 
-                      <div className="relative group/qr">
-                        <div className="absolute -inset-4 bg-red-600/20 blur-2xl rounded-full opacity-0 group-hover/qr:opacity-100 transition-opacity"></div>
-                        <div className="relative bg-white p-6 rounded-[3rem] shadow-2xl overflow-hidden max-w-[220px] transform hover:scale-[1.05] transition-transform duration-500">
-                          <img
-                            src="/qr-code.jpg"
-                            alt="Scan to Pay"
-                            className="w-full h-auto rounded-2xl"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="w-full space-y-4">
-                        <div
-                          className="p-5 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-between group cursor-pointer active:scale-95 transition-all"
-                          onClick={() => {
-                            navigator.clipboard.writeText('sbi14u@ybl');
-                            setSuccess('UPI ID Copied!');
-                            setTimeout(() => setSuccess(''), 2000);
-                          }}
-                        >
-                          <div className="text-left">
-                            <p className="text-[8px] font-black text-gray-500 uppercase tracking-[0.2em] mb-1">Payment UPI ID</p>
-                            <p className="text-sm font-bold text-white tracking-tight">sbi14u@ybl</p>
-                          </div>
-                          <span className="text-[10px] font-black text-red-600 uppercase tracking-widest group-hover:translate-x-1 transition-transform">Copy →</span>
-                        </div>
-
+                      <div className="w-full space-y-6">
                         <button
-                          onClick={() => {
-                            const upiUrl = `upi://pay?pa=sbi14u@ybl&pn=Zeyobron&am=20000&cu=INR`;
-                            window.open(upiUrl, '_blank');
-                          }}
-                          className="w-full py-5 bg-red-600 text-white font-black uppercase text-xs tracking-[0.2em] rounded-2xl hover:bg-red-700 transition-all shadow-xl shadow-red-900/40 active:scale-95 flex items-center justify-center gap-3"
+                          onClick={handleRazorpayPayment}
+                          className="w-full py-6 bg-red-600 text-white font-black uppercase text-sm tracking-[0.2em] rounded-2xl hover:bg-red-700 transition-all shadow-[0_20px_40px_rgba(220,38,38,0.3)] hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-4"
                         >
-                          <span>📱</span> PAY VIA UPI APP
+                          PROCEED TO PAY ₹20,000
                         </button>
+
+                        <p className="text-[9px] text-gray-600 font-medium uppercase tracking-[0.2em] max-w-[280px] mx-auto leading-loose">
+                          Payment processed securely via Razorpay. Your account will be upgraded immediately after success.
+                        </p>
                       </div>
 
-                      <div className="flex items-center gap-4 opacity-30 grayscale hover:grayscale-0 transition-all duration-700">
-                        {['GPay', 'PhonePe', 'Paytm'].map(app => (
-                          <span key={app} className="text-[8px] font-black uppercase tracking-widest border border-white/20 px-3 py-1 rounded-md">{app}</span>
+                      <div className="flex flex-wrap items-center justify-center gap-6 opacity-30 grayscale hover:grayscale-0 transition-all duration-700 h-8">
+                        {['GPay', 'PhonePe', 'Paytm', 'Visa', 'Mastercard'].map(app => (
+                          <span key={app} className="text-[8px] font-black uppercase tracking-widest border border-white/20 px-3 py-1.5 rounded-lg">{app}</span>
                         ))}
                       </div>
                     </div>

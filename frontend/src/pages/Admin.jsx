@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useNotification } from '../components/Notification';
 import { useConfirm } from '../components/ConfirmDialog';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { API_URL } from '../config';
 
 export default function Admin() {
   const navigate = useNavigate();
@@ -15,6 +16,11 @@ export default function Admin() {
   const [categories, setCategories] = useState([]);
   const [activeTab, setActiveTab] = useState('overview');
   const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({
+    paymentCount: 0,
+    totalRevenue: 0,
+    recentPayments: []
+  });
 
   const [form, setForm] = useState({
     title: '', description: '', poster: '', videoUrl: '', videoType: 'youtube',
@@ -40,7 +46,7 @@ export default function Admin() {
       fd.append('file', csvFile);
 
       await axios.post(
-        `${import.meta.env.VITE_API_URL}/admin/movies/bulk-csv`,
+        `${API_URL}/admin/movies/bulk-csv`,
         fd,
         {
           headers: { ...getAuthHeaders().headers, 'Content-Type': 'multipart/form-data' }
@@ -66,14 +72,16 @@ export default function Admin() {
 
   const fetchData = async () => {
     try {
-      const [m, u, c] = await Promise.all([
-        axios.get(`${import.meta.env.VITE_API_URL}/movies`, getAuthHeaders()),
-        axios.get(`${import.meta.env.VITE_API_URL}/admin/users`, getAuthHeaders()),
-        axios.get(`${import.meta.env.VITE_API_URL}/admin/categories`, getAuthHeaders())
+      const [m, u, c, s] = await Promise.all([
+        axios.get(`${API_URL}/movies`, getAuthHeaders()),
+        axios.get(`${API_URL}/admin/users`, getAuthHeaders()),
+        axios.get(`${API_URL}/admin/categories`, getAuthHeaders()),
+        axios.get(`${API_URL}/admin/stats`, getAuthHeaders())
       ]);
       setMovies(m.data);
       setUsers(u.data);
       setCategories(c.data);
+      setStats(s.data);
     } catch (err) {
       console.error(err);
     } finally {
@@ -108,7 +116,7 @@ export default function Admin() {
         category: Array.isArray(form.category) ? form.category : (typeof form.category === 'string' ? form.category.split(',').map(c => c.trim()) : [])
       };
       const endpoint = editingId ? `/admin/movie/${editingId}` : '/admin/movie';
-      await axios[editingId ? 'put' : 'post'](`${import.meta.env.VITE_API_URL}${endpoint}`, cleanedForm, getAuthHeaders());
+      await axios[editingId ? 'put' : 'post'](`${API_URL}${endpoint}`, cleanedForm, getAuthHeaders());
       notify(`Content ${editingId ? 'Updated' : 'Published'}`, 'success');
       setForm({ title: '', description: '', poster: '', videoUrl: '', videoType: 'youtube', category: [], batchNo: '', featured: false, isPremium: false });
       setEditingId(null);
@@ -118,11 +126,27 @@ export default function Admin() {
 
   const handleUserUpdate = async (userId) => {
     try {
-      await axios.put(`${import.meta.env.VITE_API_URL}/admin/user/${userId}/subscription`, userSubForm, getAuthHeaders());
+      await axios.put(`${API_URL}/admin/user/${userId}/subscription`, userSubForm, getAuthHeaders());
       notify('Access Updated', 'success');
       setSelectedUser(null);
       fetchData();
     } catch (err) { notify(err.message, 'error'); }
+  };
+
+  const handleToggleUserStatus = async (user) => {
+    try {
+      const action = user.isActive ? 'block' : 'unblock';
+      if (await confirm(`Are you sure you want to ${action} ${user.name}?`)) {
+        await axios.put(`${API_URL}/admin/user/${user._id}/status`, {
+          isActive: !user.isActive
+        }, getAuthHeaders());
+
+        notify(`User ${user.isActive ? 'blocked' : 'unblocked'} successfully`, 'success');
+        fetchData();
+      }
+    } catch (err) {
+      notify(err.response?.data?.message || err.message, 'error');
+    }
   };
 
   const [selectedMovies, setSelectedMovies] = useState([]);
@@ -139,7 +163,7 @@ export default function Admin() {
     if (!selectedMovies.length) return;
     if (await confirm(`Are you sure you want to delete ${selectedMovies.length} lessons? This cannot be undone.`)) {
       try {
-        await Promise.all(selectedMovies.map(id => axios.delete(`${import.meta.env.VITE_API_URL}/admin/movie/${id}`, getAuthHeaders())));
+        await Promise.all(selectedMovies.map(id => axios.delete(`${API_URL}/admin/movie/${id}`, getAuthHeaders())));
         notify(`${selectedMovies.length} lessons deleted successfully`, 'success');
         setSelectedMovies([]);
         fetchData();
@@ -160,11 +184,10 @@ export default function Admin() {
   if (loading) return <LoadingSpinner />;
 
   return (
-    <div className="flex min-h-screen bg-[#0a0a0a] text-white font-sans">
+    <div className="flex min-h-screen bg-[#0a0a0a] text-white font-sans pt-20">
       {/* Sidebar */}
-      <aside className="w-64 bg-[#111] border-r border-white/5 fixed h-full z-40 hidden md:flex flex-col">
-        <div className="p-8"><h2 className="text-2xl font-black text-red-600 tracking-tighter">DATA SAI.ADMIN</h2></div>
-        <nav className="flex-1 px-4 space-y-2">
+      <aside className="w-64 bg-[#111] border-r border-white/5 fixed top-20 bottom-0 z-40 hidden md:flex flex-col">
+        <nav className="flex-1 px-4 py-8 space-y-2">
           {[
             { id: 'overview', label: 'Dashboard', i: '📊' },
             { id: 'lessons', label: 'Lessons', i: '🎥' },
@@ -179,6 +202,15 @@ export default function Admin() {
             </button>
           ))}
         </nav>
+
+        <div className="p-4 border-t border-white/5">
+          <button
+            onClick={() => navigate('/')}
+            className="w-full flex items-center gap-4 px-6 py-4 rounded-2xl transition-all font-black text-xs uppercase tracking-widest text-red-500 hover:bg-white/5"
+          >
+            <span>🚪</span> Exit Admin
+          </button>
+        </div>
       </aside>
 
       {/* Main Content */}
@@ -188,25 +220,62 @@ export default function Admin() {
             <h1 className="text-4xl font-black uppercase tracking-tighter">
               {activeTab === 'lessons' ? 'Lessons' : activeTab}
             </h1>
-            <p className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mt-1">Management Dashboard</p>
           </div>
-          <button onClick={() => navigate('/')} className="px-6 py-3 bg-white/5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all border border-white/5">← Exit Admin</button>
         </header>
 
         {activeTab === 'overview' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-in fade-in duration-500">
-            {[
-              { l: 'Total Lessons', v: movies.length, c: 'from-blue-600 to-blue-400' },
-              { l: 'Registered Users', v: users.length, c: 'from-purple-600 to-purple-400' },
-              { l: 'Premium Users', v: users.filter(u => u.subscription === 'premium').length, c: 'from-yellow-600 to-yellow-400' },
-              { l: 'Total Categories', v: categories.length, c: 'from-red-600 to-red-400' },
-            ].map(s => (
-              <div key={s.l} className="bg-[#161616] p-8 rounded-[2rem] border border-white/5 shadow-xl transition-all hover:border-white/10">
-                <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${s.c} mb-4 shadow-lg`}></div>
-                <div className="text-3xl font-black leading-none">{s.v}</div>
-                <div className="text-[10px] font-black text-gray-500 uppercase tracking-widest mt-2">{s.l}</div>
+          <div className="space-y-12 animate-in fade-in duration-500">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {[
+                { l: 'Total Revenue', v: `₹${(stats?.totalRevenue || 0).toLocaleString()}`, c: 'from-emerald-600 to-emerald-400', i: '💰' },
+                { l: 'Success Payments', v: stats?.paymentCount || 0, c: 'from-blue-600 to-blue-400', i: '✅' },
+                { l: 'Premium Users', v: users.filter(u => u.subscription === 'premium').length, c: 'from-yellow-600 to-yellow-400', i: '👑' },
+                { l: 'Total Members', v: users.length, c: 'from-purple-600 to-purple-400', i: '👥' },
+              ].map(s => (
+                <div key={s.l} className="bg-[#161616] p-8 rounded-[2rem] border border-white/5 shadow-xl transition-all hover:border-white/10 group">
+                  <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${s.c} mb-6 shadow-lg flex items-center justify-center text-xl`}>{s.i}</div>
+                  <div className="text-3xl font-black leading-none group-hover:text-emerald-500 transition-colors uppercase italic tracking-tighter">{s.v}</div>
+                  <div className="text-[10px] font-black text-gray-500 uppercase tracking-widest mt-3">{s.l}</div>
+                </div>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              <div className="lg:col-span-2 bg-[#161616] rounded-[2.5rem] p-10 border border-white/5">
+                <h3 className="text-xl font-black uppercase italic tracking-tighter mb-8 flex items-center gap-3">
+                  <span className="text-red-600">📊</span> Operational Stats
+                </h3>
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="p-6 bg-black/20 rounded-3xl border border-white/5">
+                    <div className="text-2xl font-black mb-1">{movies.length}</div>
+                    <div className="text-[9px] font-black text-gray-600 uppercase tracking-widest">Total Lessons Published</div>
+                  </div>
+                  <div className="p-6 bg-black/20 rounded-3xl border border-white/5">
+                    <div className="text-2xl font-black mb-1">{categories.length}</div>
+                    <div className="text-[9px] font-black text-gray-600 uppercase tracking-widest">Active Categories</div>
+                  </div>
+                </div>
               </div>
-            ))}
+
+              <div className="bg-[#161616] rounded-[2.5rem] p-10 border border-white/5">
+                <h3 className="text-xl font-black uppercase italic tracking-tighter mb-8 flex items-center gap-3">
+                  <span className="text-emerald-500">💰</span> Recent Sales
+                </h3>
+                <div className="space-y-4">
+                  {stats?.recentPayments?.length > 0 ? stats.recentPayments.map(p => (
+                    <div key={p._id} className="flex justify-between items-center p-4 bg-black/20 rounded-2xl border border-white/5">
+                      <div>
+                        <div className="text-[10px] font-black uppercase tracking-tighter truncate w-32">{p.paymentId}</div>
+                        <div className="text-[8px] font-bold text-gray-600 uppercase">{new Date(p.createdAt).toLocaleDateString()}</div>
+                      </div>
+                      <div className="text-emerald-500 font-black text-sm italic">₹20K</div>
+                    </div>
+                  )) : (
+                    <p className="text-[10px] font-black text-gray-700 uppercase tracking-widest text-center py-8">No payments yet</p>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
@@ -329,7 +398,7 @@ export default function Admin() {
                     <button
                       onClick={async () => {
                         try {
-                          const res = await axios.get(`${import.meta.env.VITE_API_URL}/admin/movies/sample-csv`, {
+                          const res = await axios.get(`${API_URL}/admin/movies/sample-csv`, {
                             ...getAuthHeaders(),
                             responseType: 'blob'
                           });
@@ -432,7 +501,7 @@ export default function Admin() {
                         <td className="p-10 text-right">
                           <div className="flex justify-end gap-3 opacity-30 group-hover:opacity-100 transition-opacity">
                             <button onClick={() => { setEditingId(m._id); setForm(m); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white text-black transition-all shadow-lg">✏️</button>
-                            <button onClick={async () => { if (await confirm(`Are you sure you want to delete "${m.title}"?`)) { await axios.delete(`${import.meta.env.VITE_API_URL}/admin/movie/${m._id}`, getAuthHeaders()); fetchData(); } }} className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-red-600 hover:border-red-600 transition-all shadow-lg font-bold">🗑️</button>
+                            <button onClick={async () => { if (await confirm(`Are you sure you want to delete "${m.title}"?`)) { await axios.delete(`${API_URL}/admin/movie/${m._id}`, getAuthHeaders()); fetchData(); } }} className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-red-600 hover:border-red-600 transition-all shadow-lg font-bold">🗑️</button>
                           </div>
                         </td>
                       </tr>
@@ -481,10 +550,17 @@ export default function Admin() {
                           </div>
                         </td>
                         <td className="p-12">
-                          <span className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-3 w-fit ${u.subscription === 'premium' ? 'bg-yellow-500/10 text-yellow-500 border border-yellow-500/20' : 'bg-gray-800/10 text-gray-600 border border-white/5'}`}>
-                            {u.subscription === 'premium' && <span className="w-1.5 h-1.5 bg-yellow-500 rounded-full animate-pulse"></span>}
-                            {u.subscription === 'premium' ? 'Premium Access' : 'Free Plan'}
-                          </span>
+                          <div className="flex flex-col gap-2">
+                            <span className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-3 w-fit ${u.subscription === 'premium' ? 'bg-yellow-500/10 text-yellow-500 border border-yellow-500/20' : 'bg-gray-800/10 text-gray-600 border border-white/5'}`}>
+                              {u.subscription === 'premium' && <span className="w-1.5 h-1.5 bg-yellow-500 rounded-full animate-pulse"></span>}
+                              {u.subscription === 'premium' ? 'Premium Access' : 'Free Plan'}
+                            </span>
+                            {!u.isActive && (
+                              <span className="px-5 py-1.5 bg-red-600/20 text-red-500 border border-red-600/30 rounded-lg text-[8px] font-black uppercase tracking-[0.2em] w-fit">
+                                ⚠️ Account Banned
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="p-12">
                           <div className="flex flex-wrap gap-1.5 max-w-[300px]">
@@ -501,7 +577,20 @@ export default function Admin() {
                           </div>
                         </td>
                         <td className="p-12 text-right">
-                          <button onClick={() => { setSelectedUser(u); setUserSubForm({ subscription: u.subscription, subscribedCategories: u.subscribedCategories || [] }) }} className="px-10 py-4 bg-white text-black text-[10px] font-black rounded-[1.5rem] hover:bg-red-600 hover:text-white active:scale-95 transition-all shadow-xl uppercase tracking-widest">Edit Access</button>
+                          <div className="flex justify-end gap-3">
+                            <button
+                              onClick={() => { setSelectedUser(u); setUserSubForm({ subscription: u.subscription, subscribedCategories: u.subscribedCategories || [] }) }}
+                              className="px-6 py-4 bg-white text-black text-[10px] font-black rounded-2xl hover:bg-white/90 active:scale-95 transition-all shadow-xl uppercase tracking-widest"
+                            >
+                              Edit Access
+                            </button>
+                            <button
+                              onClick={() => handleToggleUserStatus(u)}
+                              className={`px-6 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 flex items-center gap-2 ${u.isActive ? 'bg-red-600/10 text-red-500 border border-red-600/20 hover:bg-red-600 hover:text-white' : 'bg-green-600/10 text-green-500 border border-green-600/20 hover:bg-green-600 hover:text-white'}`}
+                            >
+                              {u.isActive ? '🚫 Block' : '✅ Unblock'}
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -517,7 +606,7 @@ export default function Admin() {
             <div className="bg-[#161616] p-12 rounded-[3.5rem] border border-white/5 max-w-2xl shadow-2xl relative overflow-hidden">
               <div className="absolute top-0 left-0 w-32 h-32 bg-red-600/5 blur-[50px]"></div>
               <h3 className="text-2xl font-black uppercase mb-10 italic tracking-tighter">Create New Category</h3>
-              <form onSubmit={async (e) => { e.preventDefault(); await axios.post(`${import.meta.env.VITE_API_URL}/admin/category`, categoryForm, getAuthHeaders()); setCategoryForm({ name: '', description: '', isPremium: false }); fetchData(); notify('Category Created Successfully', 'success'); }} className="space-y-8">
+              <form onSubmit={async (e) => { e.preventDefault(); await axios.post(`${API_URL}/admin/category`, categoryForm, getAuthHeaders()); setCategoryForm({ name: '', description: '', isPremium: false }); fetchData(); notify('Category Created Successfully', 'success'); }} className="space-y-8">
                 <div className="space-y-3">
                   <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-4">Category Name</label>
                   <input type="text" placeholder="e.g. Big Data" value={categoryForm.name} onChange={e => setCategoryForm({ ...categoryForm, name: e.target.value })} className="px-8 py-5 bg-black/40 border border-white/10 rounded-2xl w-full font-black uppercase text-sm focus:border-red-600 outline-none transition-all" required />
@@ -536,7 +625,7 @@ export default function Admin() {
                   <div className="w-16 h-16 rounded-3xl bg-white/5 flex items-center justify-center text-3xl mb-8 group-hover:scale-110 transition-transform">📂</div>
                   <h4 className="font-black uppercase text-white mb-3 text-lg tracking-tighter italic">{c.name}</h4>
                   <p className="text-[11px] font-bold text-gray-600 uppercase mb-10 line-clamp-3 leading-relaxed">{c.description || 'No description provided.'}</p>
-                  <button onClick={async () => { if (await confirm(`Are you sure you want to delete category: "${c.name}"?`)) { await axios.delete(`${import.meta.env.VITE_API_URL}/admin/category/${c._id}`, getAuthHeaders()); fetchData(); } }} className="w-full py-4 bg-red-600/10 text-red-500 rounded-2xl text-[10px] font-black uppercase hover:bg-red-600 hover:text-white transition-all border border-red-600/20 shadow-lg">Delete Category</button>
+                  <button onClick={async () => { if (await confirm(`Are you sure you want to delete category: "${c.name}"?`)) { await axios.delete(`${API_URL}/admin/category/${c._id}`, getAuthHeaders()); fetchData(); } }} className="w-full py-4 bg-red-600/10 text-red-500 rounded-2xl text-[10px] font-black uppercase hover:bg-red-600 hover:text-white transition-all border border-red-600/20 shadow-lg">Delete Category</button>
                 </div>
               ))}
             </div>

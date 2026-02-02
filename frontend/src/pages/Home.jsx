@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import MovieCard from '../components/MovieCard';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { API_URL } from '../config';
 
 export default function Home() {
   const navigate = useNavigate();
@@ -25,9 +26,9 @@ export default function Home() {
         } : {};
 
         const [allMovies, featuredMovies, categoriesData] = await Promise.all([
-          axios.get(import.meta.env.VITE_API_URL + '/movies', config),
-          axios.get(import.meta.env.VITE_API_URL + '/movies?featured=true', config),
-          axios.get(import.meta.env.VITE_API_URL + '/categories') // Public endpoint, no auth needed
+          axios.get(API_URL + '/movies', config),
+          axios.get(API_URL + '/movies?featured=true', config),
+          axios.get(API_URL + '/categories') // Public endpoint, no auth needed
         ]);
         // Show ALL video cards to everyone (Access control happens on Watch Page)
         setMovies(allMovies.data);

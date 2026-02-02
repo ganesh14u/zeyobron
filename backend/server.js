@@ -7,6 +7,8 @@ import authRoutes from "./routes/auth.js";
 import movieRoutes from "./routes/movies.js";
 import adminRoutes from "./routes/admin.js";
 import categoryRoutes from "./routes/categories.js";
+import paymentRoutes from "./routes/payment.js";
+
 
 dotenv.config();
 const app = express();
@@ -29,10 +31,8 @@ app.use(
 
       // Allow localhost, the legacy domain, OR any Netlify app (regex)
       if (allowedOrigins.includes(origin) || origin.endsWith(".netlify.app")) {
-        console.log(`✅ CORS allowed for origin: ${origin}`);
         callback(null, true);
       } else {
-        console.warn(`❌ CORS blocked for origin: ${origin}`);
         callback(new Error("Not allowed by CORS"));
       }
     },
@@ -63,6 +63,8 @@ app.use("/api/auth", authRoutes);
 app.use("/api/movies", movieRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/categories", categoryRoutes);
+app.use("/api/payment", paymentRoutes);
+
 
 // ✅ 404 handler
 app.use((req, res) => {

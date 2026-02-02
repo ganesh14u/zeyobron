@@ -2,6 +2,7 @@ import express from 'express';
 import Movie from '../models/Movie.js';
 import Category from '../models/Category.js';
 import User from '../models/User.js';
+import Payment from '../models/Payment.js';
 import { protect, adminOnly } from '../middleware/auth.js';
 import multer from 'multer';
 import { Readable } from 'stream';
@@ -197,6 +198,31 @@ router.get('/users', protect, adminOnly, async (req, res) => {
   res.json(users);
 });
 
+// Get global stats including payments
+router.get('/stats', protect, adminOnly, async (req, res) => {
+  try {
+    const [movieCount, userCount, categoryCount, payments] = await Promise.all([
+      Movie.countDocuments(),
+      User.countDocuments(),
+      Category.countDocuments(),
+      Payment.find().sort({ createdAt: -1 })
+    ]);
+
+    const totalRevenue = payments.reduce((sum, p) => sum + p.amount, 0);
+
+    res.json({
+      movies: movieCount,
+      users: userCount,
+      categories: categoryCount,
+      paymentCount: payments.length,
+      totalRevenue,
+      recentPayments: payments.slice(0, 5)
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 // Update user subscription (removed expiry)
 router.put('/user/:id/subscription', protect, adminOnly, async (req, res) => {
   try {
@@ -225,28 +251,18 @@ router.put('/user/:id/status', protect, adminOnly, async (req, res) => {
     const user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ message: 'User not found' });
 
-    // Prevent revoking admin@netflix.com
-    if (user.email === 'admin@netflix.com' && status === 'revoked') {
-      return res.status(403).json({ message: 'Cannot revoke the main admin account' });
+    // Prevent blocking the main admin
+    if (user.role === 'admin' && !req.body.isActive) {
+      return res.status(403).json({ message: 'Cannot deactivate an admin account' });
     }
 
-    if (status === 'revoked') {
-      // Revoke access: clear all categories and set as inactive
-      user.isActive = false;
-      user.subscribedCategories = [];
-      user.subscription = 'free';
-    } else if (status === 'active') {
-      user.isActive = true;
-    }
-
+    user.isActive = req.body.isActive;
     await user.save();
 
     res.json({
-      user: {
-        ...user.toObject(),
-        password: undefined
-      },
-      message: `User ${status === 'revoked' ? 'access revoked' : 'activated'}`
+      success: true,
+      message: `User ${user.isActive ? 'activated' : 'deactivated'} successfully`,
+      user
     });
   } catch (error) {
     res.status(400).json({ message: error.message });
