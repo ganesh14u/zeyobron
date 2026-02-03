@@ -37,6 +37,25 @@ export default function Admin() {
   const [bulkMode, setBulkMode] = useState(false);
   const fileInputRef = useRef(null);
 
+  const [platformSettings, setPlatformSettings] = useState({
+    premiumPrice: 20000,
+    originalPrice: 25000,
+    discountLabel: '20% OFF'
+  });
+
+  // Auto-calculate discount percentage
+  useEffect(() => {
+    if (platformSettings.originalPrice > 0 && platformSettings.premiumPrice > 0) {
+      const percentage = Math.round(((platformSettings.originalPrice - platformSettings.premiumPrice) / platformSettings.originalPrice) * 100);
+      if (percentage > 0) {
+        setPlatformSettings(prev => ({
+          ...prev,
+          discountLabel: `${percentage}% OFF`
+        }));
+      }
+    }
+  }, [platformSettings.premiumPrice, platformSettings.originalPrice]);
+
   const handleBulkImport = async () => {
     if (!csvFile) return;
     setIsImporting(true);
@@ -72,16 +91,18 @@ export default function Admin() {
 
   const fetchData = async () => {
     try {
-      const [m, u, c, s] = await Promise.all([
+      const [m, u, c, s, settings] = await Promise.all([
         axios.get(`${API_URL}/movies`, getAuthHeaders()),
         axios.get(`${API_URL}/admin/users`, getAuthHeaders()),
         axios.get(`${API_URL}/admin/categories`, getAuthHeaders()),
-        axios.get(`${API_URL}/admin/stats`, getAuthHeaders())
+        axios.get(`${API_URL}/admin/stats`, getAuthHeaders()),
+        axios.get(`${API_URL}/admin/settings`, getAuthHeaders())
       ]);
       setMovies(m.data);
       setUsers(u.data);
       setCategories(c.data);
       setStats(s.data);
+      setPlatformSettings(settings.data);
     } catch (err) {
       console.error(err);
     } finally {
@@ -149,6 +170,17 @@ export default function Admin() {
     }
   };
 
+  const handleUpdateSettings = async (e) => {
+    e.preventDefault();
+    try {
+      await axios.put(`${API_URL}/admin/settings`, platformSettings, getAuthHeaders());
+      notify('Pricing settings updated successfully!', 'success');
+      fetchData();
+    } catch (err) {
+      notify(err.response?.data?.message || err.message, 'error');
+    }
+  };
+
   const handleResetPayments = async () => {
     if (await confirm('CRITICAL: Are you sure you want to PERMANENTLY reset all payment data? This will clear total revenue and recent sales history. This action cannot be undone.')) {
       try {
@@ -205,6 +237,7 @@ export default function Admin() {
             { id: 'lessons', label: 'Lessons', i: '🎥' },
             { id: 'users', label: 'Members', i: '👥' },
             { id: 'categories', label: 'Categories', i: '📂' },
+            { id: 'pricing', label: 'Pricing', i: '💰' },
           ].map(t => (
             <button
               key={t.id} onClick={() => setActiveTab(t.id)}
@@ -288,7 +321,7 @@ export default function Admin() {
                         <div className="text-[10px] font-black uppercase tracking-tighter truncate w-32">{p.paymentId}</div>
                         <div className="text-[8px] font-bold text-gray-600 uppercase">{new Date(p.createdAt).toLocaleDateString()}</div>
                       </div>
-                      <div className="text-emerald-500 font-black text-sm italic">₹20K</div>
+                      <div className="text-emerald-500 font-black text-sm italic">₹{(p.amount || 0).toLocaleString()}</div>
                     </div>
                   )) : (
                     <p className="text-[10px] font-black text-gray-700 uppercase tracking-widest text-center py-8">No payments yet</p>
@@ -653,6 +686,79 @@ export default function Admin() {
         )}
 
 
+        {activeTab === 'pricing' && (
+          <div className="max-w-4xl mx-auto space-y-12 animate-in fade-in duration-500">
+            <div className="bg-[#161616] p-12 rounded-[3.5rem] border border-white/5 shadow-2xl space-y-12">
+              <div className="space-y-4">
+                <h2 className="text-3xl font-black uppercase italic tracking-tighter text-white flex items-center gap-4">
+                  <span className="text-red-600">💰</span> Pricing Settings
+                </h2>
+                <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest leading-loose max-w-lg">
+                  Manage your platform's subscription pricing and discount labels. Changes are reflected instantly in the user upgrade portal.
+                </p>
+              </div>
+
+              <form onSubmit={handleUpdateSettings} className="space-y-10">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                  <div className="space-y-4">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-6">Premium Price (INR)</label>
+                    <input
+                      type="number"
+                      value={platformSettings.premiumPrice}
+                      onChange={e => setPlatformSettings({ ...platformSettings, premiumPrice: Number(e.target.value) })}
+                      className="w-full px-10 py-6 bg-black/40 border border-white/10 rounded-[2rem] font-bold text-lg focus:border-red-600 outline-none transition-all text-white"
+                      placeholder="e.g. 20000"
+                      required
+                    />
+                    <p className="text-[9px] text-gray-600 font-bold uppercase tracking-widest ml-6">The actual amount charged to the user.</p>
+                  </div>
+
+                  <div className="space-y-4">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-6">Original Price (Strike-through)</label>
+                    <input
+                      type="number"
+                      value={platformSettings.originalPrice}
+                      onChange={e => setPlatformSettings({ ...platformSettings, originalPrice: Number(e.target.value) })}
+                      className="w-full px-10 py-6 bg-black/40 border border-white/10 rounded-[2rem] font-bold text-lg focus:border-red-600 outline-none transition-all text-white"
+                      placeholder="e.g. 25000"
+                      required
+                    />
+                    <p className="text-[9px] text-gray-600 font-bold uppercase tracking-widest ml-6">Shown as the crossed-out price to highlight savings.</p>
+                  </div>
+
+                  <div className="md:col-span-2 space-y-4">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-6">Discount Label</label>
+                    <input
+                      type="text"
+                      value={platformSettings.discountLabel}
+                      onChange={e => setPlatformSettings({ ...platformSettings, discountLabel: e.target.value })}
+                      className="w-full px-10 py-6 bg-black/40 border border-white/10 rounded-[2rem] font-bold text-lg focus:border-red-600 outline-none transition-all text-white"
+                      placeholder="e.g. 20% OFF or LIMITED OFFER"
+                      required
+                    />
+                    <p className="text-[9px] text-gray-600 font-bold uppercase tracking-widest ml-6">Visual badge shown next to the price.</p>
+                  </div>
+                </div>
+
+                <div className="pt-6">
+                  <button type="submit" className="w-full py-7 bg-red-600 text-white font-black uppercase rounded-[2.5rem] shadow-2xl hover:bg-red-700 transition-all tracking-widest text-xs flex items-center justify-center gap-3">
+                    <span>💾</span> Update Pricing Platform
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            <div className="bg-emerald-500/5 border border-emerald-500/10 p-10 rounded-[2.5rem] flex items-center gap-8">
+              <div className="text-4xl">💎</div>
+              <div>
+                <h4 className="text-emerald-500 font-black uppercase tracking-widest text-xs mb-2">Live Preview Logic</h4>
+                <p className="text-gray-400 text-[10px] font-medium leading-relaxed uppercase tracking-wider">
+                  Users will see: <span className="text-white line-through opacity-50">₹{(platformSettings.originalPrice || 0).toLocaleString()}</span> <span className="text-white">₹{(platformSettings.premiumPrice || 0).toLocaleString()}</span> <span className="px-2 py-1 bg-red-600/20 text-red-500 rounded text-[8px] ml-2">{platformSettings.discountLabel}</span>
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
 
       {/* Access Control Overlay */}

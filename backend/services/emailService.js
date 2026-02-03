@@ -50,9 +50,6 @@ const initTransporter = async () => {
     return transporter;
 };
 
-// Immediate initialization
-initTransporter().catch(err => console.error('Mailer Init Failed:', err));
-
 // Send password reset email
 export const sendPasswordResetEmail = async (email, resetToken, userName) => {
     try {
@@ -150,11 +147,6 @@ export const sendPasswordResetEmail = async (email, resetToken, userName) => {
 
         const result = await transporter.sendMail(mailOptions);
 
-        // Log URL if using ethereal
-        if (result.envelope && result.messageId && !process.env.EMAIL_USER) {
-            console.log('📬 Ethereal Email URL:', nodemailer.getTestMessageUrl(result));
-        }
-
         console.log('Password reset email sent successfully to:', email);
         return result;
     } catch (error) {
@@ -248,11 +240,6 @@ export const sendWelcomeEmail = async (email, userName) => {
         };
 
         const result = await transporter.sendMail(mailOptions);
-
-        // Log URL if using ethereal
-        if (result.envelope && result.messageId && !process.env.EMAIL_USER) {
-            console.log('📬 Ethereal Email URL:', nodemailer.getTestMessageUrl(result));
-        }
 
         console.log('Welcome email sent successfully to:', email);
         return result;

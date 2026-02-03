@@ -3,6 +3,7 @@ import Movie from '../models/Movie.js';
 import Category from '../models/Category.js';
 import User from '../models/User.js';
 import Payment from '../models/Payment.js';
+import Settings from '../models/Settings.js';
 import { protect, adminOnly } from '../middleware/auth.js';
 import multer from 'multer';
 import { Readable } from 'stream';
@@ -444,6 +445,41 @@ router.post('/movies/bulk-csv', protect, adminOnly, csvUpload.single('file'), as
       }
     });
 
+});
+
+// ==================== SETTINGS ROUTES ====================
+
+// Get platform settings
+router.get('/settings', protect, async (req, res) => {
+  try {
+    let settings = await Settings.findOne();
+    if (!settings) {
+      settings = await Settings.create({
+        premiumPrice: 20000,
+        originalPrice: 25000,
+        discountLabel: '20% OFF'
+      });
+    }
+    res.json(settings);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Update platform settings
+router.put('/settings', protect, adminOnly, async (req, res) => {
+  try {
+    let settings = await Settings.findOne();
+    if (!settings) {
+      settings = new Settings(req.body);
+    } else {
+      Object.assign(settings, req.body);
+    }
+    await settings.save();
+    res.json(settings);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 });
 
 export default router;

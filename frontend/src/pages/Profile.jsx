@@ -22,6 +22,11 @@ export default function Profile() {
     password: '',
     confirmPassword: ''
   });
+  const [pricingSettings, setPricingSettings] = useState({
+    premiumPrice: 20000,
+    originalPrice: 25000,
+    discountLabel: '20% OFF'
+  });
 
   // Fetch fresh user data
   const fetchUserData = async () => {
@@ -49,6 +54,14 @@ export default function Profile() {
           phone: userData.phone || ''
         });
       }
+
+      // Fetch Pricing Settings
+      try {
+        const settingsRes = await axios.get(`${API_URL}/admin/settings`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setPricingSettings(settingsRes.data);
+      } catch (e) { console.error("Pricing settings fetch failed", e); }
 
       localStorage.setItem('user', JSON.stringify(userData));
       window.dispatchEvent(new Event('userDataUpdated'));
@@ -185,9 +198,19 @@ export default function Profile() {
         theme: {
           color: "#dc2626", // Red 600
         },
+        modal: {
+          ondismiss: function () {
+            setError('Payment cancelled by user');
+          }
+        }
       };
 
       const rzp = new window.Razorpay(options);
+
+      rzp.on('payment.failed', function (response) {
+        setError(`Payment Failed: ${response.error.description}`);
+      });
+
       rzp.open();
 
     } catch (err) {
@@ -264,41 +287,47 @@ export default function Profile() {
               </div>
             </div>
 
+            {/* Status Messages */}
+            <div className="max-w-4xl mx-auto mb-8">
+              {error && <div className="p-6 bg-red-600/10 border border-red-600/20 text-red-500 rounded-[2rem] text-center text-xs font-black uppercase tracking-[0.2em] animate-pulse shadow-2xl">{error}</div>}
+              {success && <div className="p-6 bg-green-500/10 border border-green-500/20 text-green-500 rounded-[2rem] text-center text-xs font-black uppercase tracking-[0.2em] shadow-2xl animate-in zoom-in duration-500">🎉 {success}</div>}
+            </div>
+
             {/* UPI Payment Modal */}
             {showPaymentModal && (
-              <div className="fixed inset-0 z-[200000] flex items-start justify-center p-4 md:p-12 overflow-y-auto bg-black/95 backdrop-blur-3xl pt-24 md:pt-32">
+              <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/90 backdrop-blur-2xl">
                 <div className="fixed inset-0" onClick={() => setShowPaymentModal(false)}></div>
 
-                <div className="relative z-10 w-full max-w-5xl bg-[#0a0a0a] border border-white/10 rounded-[2rem] md:rounded-[3.5rem] overflow-hidden shadow-[0_0_100px_rgba(220,38,38,0.2)] animate-in slide-in-from-bottom-12 duration-500 mb-20">
+                <div className="relative z-10 w-full max-w-4xl max-h-[85vh] bg-[#0a0a0a] border border-white/10 rounded-[2.5rem] md:rounded-[3rem] overflow-hidden shadow-[0_0_80px_rgba(220,38,38,0.25)] animate-in zoom-in-95 duration-300 flex flex-col">
                   <button
                     onClick={() => setShowPaymentModal(false)}
-                    className="absolute top-8 right-8 w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center hover:bg-red-600 transition-all text-xl z-20 group"
+                    className="absolute top-5 right-5 w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center hover:bg-red-600 transition-all text-sm z-50 group border border-white/10"
                   >
                     <span className="group-hover:rotate-90 transition-transform">✕</span>
                   </button>
 
-                  <div className="flex flex-col lg:flex-row min-h-[600px]">
+                  <div className="flex flex-col lg:flex-row flex-1 overflow-y-auto lg:overflow-hidden lg:min-h-[400px]">
                     {/* Left Side: Value Prop */}
-                    <div className="lg:w-1/2 p-12 md:p-16 bg-gradient-to-br from-[#111] to-black relative overflow-hidden flex flex-col justify-between">
-                      <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_0%_0%,rgba(220,38,38,0.15),transparent)]"></div>
+                    <div className="lg:w-1/2 p-10 md:p-12 bg-gradient-to-br from-[#111] to-black relative overflow-hidden flex flex-col justify-between">
+                      <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_0%_0%,rgba(220,38,38,0.1),transparent)]"></div>
 
-                      <div className="relative z-10 space-y-8">
-                        <div className="inline-flex items-center gap-3 px-4 py-2 bg-red-600/10 border border-red-600/20 rounded-xl">
+                      <div className="relative z-10 space-y-6">
+                        <div className="inline-flex items-center gap-3 px-3 py-1.5 bg-red-600/10 border border-red-600/20 rounded-lg">
                           <span className="w-2 h-2 bg-red-600 rounded-full animate-pulse"></span>
-                          <span className="text-[10px] font-black text-red-500 uppercase tracking-[0.2em]">Unlimited Access</span>
+                          <span className="text-[9px] font-black text-red-500 uppercase tracking-[0.2em]">Unlimited Access</span>
                         </div>
 
-                        <div className="space-y-4">
-                          <h3 className="text-4xl md:text-5xl font-black uppercase tracking-tighter italic text-white leading-[0.9]">
+                        <div className="space-y-3">
+                          <h3 className="text-3xl md:text-4xl font-black uppercase tracking-tighter italic text-white leading-[0.9]">
                             Upgrade to <br />
                             <span className="text-red-600">Premium Elite</span>
                           </h3>
-                          <p className="text-gray-500 text-sm font-medium leading-relaxed max-w-xs">
+                          <p className="text-gray-500 text-xs font-medium leading-relaxed max-w-xs">
                             Master the industry with lifetime access to all core sessions and future updates.
                           </p>
                         </div>
 
-                        <ul className="space-y-4">
+                        <ul className="space-y-3">
                           {[
                             'Lifetime Access to All Lessons',
                             'Exclusive Premium Content',
@@ -306,36 +335,42 @@ export default function Profile() {
                             'Dedicated Student Support',
                             'Offline Learning Resources'
                           ].map((feature, i) => (
-                            <li key={i} className="flex items-center gap-4 group">
-                              <span className="w-6 h-6 rounded-lg bg-green-500/10 border border-green-500/20 flex items-center justify-center text-[10px] text-green-500">✓</span>
-                              <span className="text-xs font-bold text-gray-300 group-hover:text-white transition-colors">{feature}</span>
+                            <li key={i} className="flex items-center gap-3 group">
+                              <span className="w-5 h-5 rounded-md bg-green-500/10 border border-green-500/20 flex items-center justify-center text-[8px] text-green-500">✓</span>
+                              <span className="text-[11px] font-bold text-gray-300 group-hover:text-white transition-colors">{feature}</span>
                             </li>
                           ))}
                         </ul>
                       </div>
 
-                      <div className="relative z-10 pt-12 border-t border-white/5">
+                      <div className="relative z-10 pt-8 border-t border-white/5">
                         <div className="flex items-end gap-3">
-                          <span className="text-5xl font-black text-white tracking-tighter italic">₹20,000</span>
-                          <span className="text-gray-600 text-[10px] font-black uppercase tracking-widest pb-2">/ Lifetime Access</span>
+                          <span className="text-4xl font-black text-white tracking-tighter italic">₹{(pricingSettings.premiumPrice || 0).toLocaleString()}</span>
+                          <span className="text-gray-600 text-[9px] font-black uppercase tracking-widest pb-1.5">/ Lifetime Access</span>
+                        </div>
+                        <div className="mt-4 flex items-center gap-4">
+                          <span className="text-gray-500 line-through text-sm font-bold italic">₹{(pricingSettings.originalPrice || 0).toLocaleString()}</span>
+                          <span className="px-5 py-2 bg-red-600 text-white font-black uppercase text-[18px] rounded-xl shadow-[0_10px_30px_rgba(220,38,38,0.4)] tracking-tighter italic scale-110">
+                            {pricingSettings.discountLabel}
+                          </span>
                         </div>
                       </div>
                     </div>
 
                     {/* Right Side: Payment Methods */}
-                    <div className="lg:w-1/2 p-12 md:p-16 bg-[#0a0a0a] flex flex-col justify-center items-center text-center space-y-12">
-                      <div className="space-y-4">
-                        <div className="w-20 h-20 bg-red-600/10 rounded-3xl flex items-center justify-center text-4xl mx-auto mb-6">💳</div>
-                        <h4 className="text-2xl font-black uppercase tracking-tighter italic text-white">Instant Activation</h4>
-                        <p className="text-[10px] text-gray-500 font-bold uppercase tracking-[0.3em]">Secure Automated Payment</p>
+                    <div className="lg:w-1/2 p-10 md:p-12 bg-[#0a0a0a] flex flex-col justify-center items-center text-center space-y-10">
+                      <div className="space-y-3">
+                        <div className="w-16 h-16 bg-red-600/10 rounded-2xl flex items-center justify-center text-3xl mx-auto mb-4">💳</div>
+                        <h4 className="text-xl font-black uppercase tracking-tighter italic text-white">Instant Activation</h4>
+                        <p className="text-[9px] text-gray-500 font-bold uppercase tracking-[0.3em]">Secure Automated Payment</p>
                       </div>
 
-                      <div className="w-full space-y-6">
+                      <div className="w-full space-y-5">
                         <button
                           onClick={handleRazorpayPayment}
-                          className="w-full py-6 bg-red-600 text-white font-black uppercase text-sm tracking-[0.2em] rounded-2xl hover:bg-red-700 transition-all shadow-[0_20px_40px_rgba(220,38,38,0.3)] hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-4"
+                          className="w-full py-5 bg-red-600 text-white font-black uppercase text-xs tracking-[0.2em] rounded-xl hover:bg-red-700 transition-all shadow-[0_15px_30px_rgba(220,38,38,0.25)] hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-3"
                         >
-                          PROCEED TO PAY ₹20,000
+                          PROCEED TO PAY ₹{(pricingSettings.premiumPrice || 0).toLocaleString()}
                         </button>
 
                         <p className="text-[9px] text-gray-600 font-medium uppercase tracking-[0.2em] max-w-[280px] mx-auto leading-loose">
@@ -465,9 +500,7 @@ export default function Profile() {
                       </div>
                     </div>
 
-                    {/* Status Messages */}
-                    {error && <div className="p-4 bg-red-600/10 border border-red-600/20 text-red-500 rounded-xl text-center text-xs font-black uppercase tracking-widest animate-pulse">{error}</div>}
-                    {success && <div className="p-4 bg-green-500/10 border border-green-500/20 text-green-500 rounded-xl text-center text-xs font-black uppercase tracking-widest">{success}</div>}
+                    {/* Status Messages removed from here as they are now at the top for better visibility */}
 
                     {isEditing && (
                       <div className="flex gap-4 pt-4 border-t border-white/5">

@@ -2,6 +2,7 @@ import express from "express";
 import Razorpay from "razorpay";
 import crypto from "crypto";
 import User from "../models/User.js";
+import Settings from "../models/Settings.js";
 import { protect } from "../middleware/auth.js";
 
 const router = express.Router();
@@ -18,8 +19,11 @@ const razorpay = new Razorpay({
 // @access  Private
 router.post("/order", protect, async (req, res) => {
     try {
+        const settings = await Settings.findOne() || { premiumPrice: 20000 };
+        const price = settings.premiumPrice;
+
         const options = {
-            amount: 20000 * 100, // Amount in paise (20,000 INR)
+            amount: price * 100, // Amount in paise
             currency: "INR",
             receipt: `receipt_${Date.now()}`,
         };
@@ -65,12 +69,13 @@ router.post("/verify", protect, async (req, res) => {
 
             // Log the payment
             try {
+                const settings = await Settings.findOne() || { premiumPrice: 20000 };
                 const Payment = (await import("../models/Payment.js")).default;
                 await Payment.create({
                     user: user._id,
                     orderId: razorpay_order_id,
                     paymentId: razorpay_payment_id,
-                    amount: 20000,
+                    amount: settings.premiumPrice,
                     status: 'captured'
                 });
             } catch (payErr) {
