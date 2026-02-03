@@ -9,37 +9,30 @@ let transporter;
 const initTransporter = async () => {
     if (transporter) return transporter;
 
-    const user = process.env.EMAIL_USER;
-    const pass = process.env.EMAIL_PASS;
-    const host = process.env.EMAIL_HOST;
-    const port = process.env.EMAIL_PORT || 587;
+    const user = (process.env.EMAIL_USER || '').trim();
+    const pass = (process.env.EMAIL_PASS || '').trim();
+    const host = (process.env.EMAIL_HOST || 'smtp-relay.brevo.com').trim();
+    const port = parseInt(process.env.EMAIL_PORT || '465');
 
-    console.log(`📧 Initializing Mailer: ${host || 'Gmail Service'}`);
+    console.log(`📧 Initializing Mailer: ${host}`);
 
     if (user && pass) {
-        if (host) {
-            console.log(`📡 Connecting to SMTP: ${host}:${port} (Secure: ${port == 465})`);
-            transporter = nodemailer.createTransport({
-                host: host.trim(),
-                port: parseInt(port),
-                secure: port == 465, // true for 465, false for other ports
-                auth: { user: user.trim(), pass: pass.trim() },
-                connectionTimeout: 15000, // 15 seconds
-                greetingTimeout: 15000,
-                socketTimeout: 15000,
-                tls: {
-                    rejectUnauthorized: false // Helps with some cloud proxy issues
-                }
-            });
-        } else {
-            console.log(`📧 Using Gmail Service approach`);
-            transporter = nodemailer.createTransport({
-                service: 'gmail',
-                auth: { user: user.trim(), pass: pass.trim() }
-            });
-        }
+        const isSecure = port === 465;
+        console.log(`📡 Connecting to SMTP: ${host}:${port} (Secure: ${isSecure})`);
+
+        transporter = nodemailer.createTransport({
+            host,
+            port,
+            secure: isSecure,
+            auth: { user, pass },
+            connectionTimeout: 20000,
+            greetingTimeout: 20000,
+            socketTimeout: 20000,
+            tls: {
+                rejectUnauthorized: false
+            }
+        });
     } else {
-        // Only create test account if we absolutely have to, and cache it
         console.error('❌ DISASTER: No email credentials found in process.env!');
         console.error('⚠️ Falling back to Ethereal TEST service. EMAILS WILL NOT BE DELIVERED TO REAL INBOXES.');
         const testAccount = await nodemailer.createTestAccount();
@@ -62,9 +55,13 @@ export const sendPasswordResetEmail = async (email, resetToken, userName) => {
     try {
         const transporter = await initTransporter();
 
-        const clientUrl = process.env.CLIENT_URL || 'https://datasai.netlify.app';
+        let clientUrl = (process.env.CLIENT_URL || 'https://datasai.netlify.app').trim();
+        if (clientUrl.endsWith('/')) {
+            clientUrl = clientUrl.slice(0, -1);
+        }
+
         const resetUrl = `${clientUrl}/reset-password/${resetToken}`;
-        const fromEmail = process.env.EMAIL_FROM || 'paladugusaiganesh@gmail.com'; // Using validated sender
+        const fromEmail = (process.env.EMAIL_FROM || 'paladugusaiganesh@gmail.com').trim();
 
         console.log(`🔗 Reset URL generated: ${resetUrl}`);
 
@@ -170,7 +167,7 @@ export const sendPasswordResetEmail = async (email, resetToken, userName) => {
 export const sendWelcomeEmail = async (email, userName) => {
     try {
         const transporter = await initTransporter();
-        const fromEmail = process.env.EMAIL_FROM || 'paladugusaiganesh@gmail.com';
+        const fromEmail = (process.env.EMAIL_FROM || 'paladugusaiganesh@gmail.com').trim();
 
         const mailOptions = {
             from: `"Data Sai Team" <${fromEmail}>`,
@@ -252,10 +249,10 @@ export const sendWelcomeEmail = async (email, userName) => {
 
         const result = await transporter.sendMail(mailOptions);
 
-        console.log('Welcome email sent successfully to:', email);
+        console.log('✅ Welcome email sent successfully to:', email);
         return result;
     } catch (error) {
-        console.error('Error sending welcome email:', error);
+        console.error('❌ Error sending welcome email:', error);
         throw new Error('Failed to send welcome email');
     }
 };
