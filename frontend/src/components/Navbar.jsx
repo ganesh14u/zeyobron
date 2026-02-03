@@ -108,7 +108,7 @@ export default function Navbar() {
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (!e.target.closest('.search-container')) setShowSearchResults(false);
-      if (!e.target.closest('.profile-menu-container')) setShowProfileMenu(false);
+      if (!e.target.closest('.profile-menu-container') && !e.target.closest('.mobile-menu-container')) setShowProfileMenu(false);
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
@@ -292,7 +292,7 @@ export default function Navbar() {
       </div>
 
       {/* Mobile Menu Button - Hamburger */}
-      <div className="md:hidden">
+      <div className="md:hidden mobile-menu-container">
         <button
           onClick={() => setShowProfileMenu(prev => !prev)} /* reusing profile menu state for mobile toggle simplicity */
           className="p-2 text-white hover:bg-white/10 rounded-lg transition-colors"
@@ -305,7 +305,7 @@ export default function Navbar() {
 
       {/* Mobile Menu Overlay */}
       {showProfileMenu && (
-        <div className="absolute top-full left-0 w-full bg-[#181818] border-b border-white/10 shadow-2xl p-4 flex flex-col gap-4 md:hidden animate-in slide-in-from-top-2 z-[105]">
+        <div className="absolute top-full left-0 w-full bg-[#181818] border-b border-white/10 shadow-2xl p-4 flex flex-col gap-4 md:hidden animate-in slide-in-from-top-2 z-[105] mobile-menu-container">
           {/* Mobile Search */}
           <div className="relative group w-full">
             <input

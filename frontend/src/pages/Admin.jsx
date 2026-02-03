@@ -258,8 +258,34 @@ export default function Admin() {
         </div>
       </aside>
 
+      {/* Mobile Navigation */}
+      <div className="md:hidden fixed top-[72px] left-0 right-0 bg-[#111] border-b border-white/5 z-40 overflow-x-auto no-scrollbar py-2 px-4 shadow-xl">
+        <div className="flex items-center gap-2 min-w-max">
+          {[
+            { id: 'overview', label: 'Stats', i: '📊' },
+            { id: 'lessons', label: 'Lessons', i: '🎥' },
+            { id: 'users', label: 'Members', i: '👥' },
+            { id: 'categories', label: 'Cats', i: '📂' },
+            { id: 'pricing', label: 'Price', i: '💰' },
+          ].map(t => (
+            <button
+              key={t.id} onClick={() => setActiveTab(t.id)}
+              className={`flex items-center gap-3 px-5 py-3 rounded-xl transition-all font-black text-[10px] uppercase tracking-widest ${activeTab === t.id ? 'bg-red-600 text-white shadow-lg shadow-red-900/20' : 'text-gray-500 bg-white/5'}`}
+            >
+              <span>{t.i}</span> {t.label}
+            </button>
+          ))}
+          <button
+            onClick={() => navigate('/')}
+            className="flex items-center gap-3 px-5 py-3 rounded-xl transition-all font-black text-[10px] uppercase tracking-widest text-red-500 bg-red-600/5 border border-red-600/10"
+          >
+            <span>🚪</span> Exit
+          </button>
+        </div>
+      </div>
+
       {/* Main Content */}
-      <main className="md:ml-64 flex-1 p-6 md:p-12 overflow-x-hidden">
+      <main className="md:ml-64 flex-1 p-6 md:p-12 overflow-x-hidden pt-28 md:pt-12">
         <header className="flex justify-between items-end mb-12">
           <div>
             <h1 className="text-4xl font-black uppercase tracking-tighter">
