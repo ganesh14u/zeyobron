@@ -11,42 +11,30 @@ const initTransporter = async () => {
 
     const user = (process.env.EMAIL_USER || '').trim();
     const pass = (process.env.EMAIL_PASS || '').trim();
-    const host = (process.env.EMAIL_HOST || 'smtp-relay.brevo.com').trim();
-    const port = parseInt(process.env.EMAIL_PORT || '465');
-
-    console.log(`📧 Initializing Mailer: ${host}`);
 
     if (user && pass) {
-        console.log(`� Attempting to connect via Brevo Service...`);
+        // Port 2525 is confirmed to work on Render for this project
+        console.log(`📡 Connecting to SMTP via Golden Port 2525...`);
 
         transporter = nodemailer.createTransport({
-            service: 'Brevo',
+            host: 'smtp-relay.brevo.com',
+            port: 2525,
+            secure: false, // TLS is upgraded via STARTTLS on 2525
             auth: { user, pass },
             tls: {
                 rejectUnauthorized: false
             }
         });
 
-        // Test the connection immediately
+        // Verify just once on startup
         try {
             await transporter.verify();
-            console.log('✅ SMTP Connection Verified - Ready to send emails');
-        } catch (verifyError) {
-            console.error('❌ SMTP Verification Failed:', verifyError.message);
-            console.warn('⚠️ Manual Host Fallback initiated...');
-
-            // If service fails, try one last manual configuration on port 2525
-            transporter = nodemailer.createTransport({
-                host: 'smtp-relay.brevo.com',
-                port: 2525,
-                secure: false,
-                auth: { user, pass },
-                tls: { rejectUnauthorized: false }
-            });
+            console.log('✅ SMTP Connection Verified on Port 2525 - Ready!');
+        } catch (error) {
+            console.error('❌ SMTP Verification failed even on Port 2525:', error.message);
         }
     } else {
-        console.error('❌ DISASTER: No email credentials found in process.env!');
-        console.error('⚠️ Falling back to Ethereal TEST service. EMAILS WILL NOT BE DELIVERED TO REAL INBOXES.');
+        console.error('❌ No email credentials found in process.env!');
         const testAccount = await nodemailer.createTestAccount();
         transporter = nodemailer.createTransport({
             host: "smtp.ethereal.email",
@@ -169,8 +157,6 @@ export const sendPasswordResetEmail = async (email, resetToken, userName) => {
         return result;
     } catch (error) {
         console.error('❌ Error sending password reset email:', error);
-        console.error('Environment check - EMAIL_USER exists:', !!process.env.EMAIL_USER);
-        console.error('Environment check - CLIENT_URL:', process.env.CLIENT_URL);
         throw new Error('Failed to send password reset email: ' + error.message);
     }
 };
