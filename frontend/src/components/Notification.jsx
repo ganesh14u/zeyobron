@@ -17,11 +17,11 @@ export default function Notification() {
     showNotificationFunction = (message, type) => {
       const id = Date.now();
       setNotifications(prev => [...prev, { id, message, type }]);
-      
-      // Auto remove after 4 seconds
+
+      // Auto remove after 5 seconds
       setTimeout(() => {
         setNotifications(prev => prev.filter(n => n.id !== id));
-      }, 4000);
+      }, 5000);
     };
 
     return () => {
@@ -34,7 +34,7 @@ export default function Notification() {
   };
 
   const getIcon = (type) => {
-    switch(type) {
+    switch (type) {
       case 'success':
         return (
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -63,20 +63,20 @@ export default function Notification() {
   };
 
   const getColors = (type) => {
-    switch(type) {
+    switch (type) {
       case 'success':
-        return 'bg-green-500 border-green-600';
+        return 'bg-emerald-600 border-emerald-700 shadow-emerald-900/40';
       case 'error':
-        return 'bg-red-500 border-red-600';
+        return 'bg-red-600 border-red-700 shadow-red-900/40';
       case 'warning':
-        return 'bg-yellow-500 border-yellow-600';
+        return 'bg-yellow-600 border-yellow-700 shadow-yellow-900/40';
       default:
-        return 'bg-blue-500 border-blue-600';
+        return 'bg-blue-600 border-blue-700 shadow-blue-900/40';
     }
   };
 
   return (
-    <div className="fixed top-20 right-6 z-[9999] space-y-3">
+    <div className="fixed bottom-8 right-8 z-[999999] space-y-4">
       {notifications.map(({ id, message, type }) => (
         <div
           key={id}

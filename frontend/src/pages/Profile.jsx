@@ -3,9 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { API_URL, RAZORPAY_KEY_ID } from '../config';
+import { useNotification } from '../components/Notification';
 
 export default function Profile() {
   const navigate = useNavigate();
+  const notify = useNotification();
   // ... (existing state)
   const [user, setUser] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -14,8 +16,6 @@ export default function Profile() {
     phone: ''
   });
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [passwordData, setPasswordData] = useState({
@@ -85,8 +85,6 @@ export default function Profile() {
 
   const handleUpdate = async (e) => {
     e.preventDefault();
-    setError('');
-    setSuccess('');
 
     try {
       const token = localStorage.getItem('token');
@@ -107,22 +105,18 @@ export default function Profile() {
       localStorage.setItem('user', JSON.stringify(updatedUser));
       window.dispatchEvent(new Event('userDataUpdated'));
 
-      setSuccess('Profile updated successfully!');
+      notify('Profile updated successfully!', 'success');
       setIsEditing(false);
-
-      setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to update profile');
+      notify(err.response?.data?.message || 'Failed to update profile', 'error');
     }
   };
 
   const handlePasswordChange = async (e) => {
     e.preventDefault();
-    setError('');
-    setSuccess('');
 
     if (passwordData.password !== passwordData.confirmPassword) {
-      setError('Passwords do not match');
+      notify('Passwords do not match', 'error');
       return;
     }
 
@@ -136,13 +130,11 @@ export default function Profile() {
         }
       );
 
-      setSuccess('Password changed successfully!');
+      notify('Password changed successfully!', 'success');
       setIsChangingPassword(false);
       setPasswordData({ password: '', confirmPassword: '' });
-
-      setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to change password');
+      notify(err.response?.data?.message || 'Failed to change password', 'error');
     }
   };
 
@@ -182,12 +174,12 @@ export default function Profile() {
             );
 
             if (verifyRes.data.success) {
-              setSuccess('Welcome to Premium Elite!');
+              notify('Welcome to Premium Elite!', 'success');
               setShowPaymentModal(false);
               fetchUserData(); // Refresh user state
             }
           } catch (err) {
-            setError('Payment verification failed. Please contact support.');
+            notify('Payment verification failed. Please contact support.', 'error');
           }
         },
         prefill: {
@@ -200,7 +192,7 @@ export default function Profile() {
         },
         modal: {
           ondismiss: function () {
-            setError('Payment cancelled by user');
+            notify('Payment cancelled by user', 'warning');
           }
         }
       };
@@ -208,14 +200,14 @@ export default function Profile() {
       const rzp = new window.Razorpay(options);
 
       rzp.on('payment.failed', function (response) {
-        setError(`Payment Failed: ${response.error.description}`);
+        notify(`Payment Failed: ${response.error.description}`, 'error');
       });
 
       rzp.open();
 
     } catch (err) {
       const msg = err.response?.data?.message || 'Failed to initiate payment. Check your Razorpay keys and Internet.';
-      setError(msg);
+      notify(msg, 'error');
       console.error('Payment Error:', err);
     }
   };
@@ -287,11 +279,7 @@ export default function Profile() {
               </div>
             </div>
 
-            {/* Status Messages */}
-            <div className="max-w-4xl mx-auto mb-8">
-              {error && <div className="p-6 bg-red-600/10 border border-red-600/20 text-red-500 rounded-[2rem] text-center text-xs font-black uppercase tracking-[0.2em] animate-pulse shadow-2xl">{error}</div>}
-              {success && <div className="p-6 bg-green-500/10 border border-green-500/20 text-green-500 rounded-[2rem] text-center text-xs font-black uppercase tracking-[0.2em] shadow-2xl animate-in zoom-in duration-500">🎉 {success}</div>}
-            </div>
+            {/* Status Messages removed from here as they are now global toasts */}
 
             {/* UPI Payment Modal */}
             {showPaymentModal && (
@@ -465,7 +453,6 @@ export default function Profile() {
                         onClick={() => {
                           setIsChangingPassword(false);
                           setPasswordData({ password: '', confirmPassword: '' });
-                          setError('');
                         }}
                         className="py-5 px-10 bg-white/5 text-gray-400 rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-white/10 hover:text-white transition-all"
                       >
@@ -515,7 +502,6 @@ export default function Profile() {
                           onClick={() => {
                             setIsEditing(false);
                             setFormData({ name: user.name || '', phone: user.phone || '' });
-                            setError('');
                           }}
                           className="py-5 px-10 bg-white/5 text-gray-400 rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-white/10 hover:text-white transition-all"
                         >
@@ -546,17 +532,7 @@ export default function Profile() {
           </div>
         </div>
 
-        {/* Global Notifications */}
-        {success && (
-          <div className="fixed bottom-8 right-8 bg-green-600 text-white px-8 py-4 rounded-2xl shadow-2xl font-black text-sm uppercase tracking-wider animate-in fade-in slide-in-from-bottom-4 duration-300 z-[200]">
-            ✓ {success}
-          </div>
-        )}
-        {error && (
-          <div className="fixed bottom-8 right-8 bg-red-600 text-white px-8 py-4 rounded-2xl shadow-2xl font-black text-sm uppercase tracking-wider animate-in fade-in slide-in-from-bottom-4 duration-300 z-[200]">
-            ⚠ {error}
-          </div>
-        )}
+        {/* Global Notifications are already handled by the <Notification /> component in App.jsx or equivalent */}
 
       </div>
     </div>
