@@ -32,7 +32,11 @@ router.post('/signup', async (req, res) => {
     // Don't fail signup if email fails
   }
 
-  const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET);
+  const sessionId = crypto.randomUUID();
+  user.currentSessionId = sessionId;
+  await user.save();
+
+  const token = jwt.sign({ id: user._id, sessionId }, process.env.JWT_SECRET);
   res.json({
     token,
     user: {
@@ -59,7 +63,22 @@ router.post('/login', async (req, res) => {
 
   const ok = await bcrypt.compare(password, user.password);
   if (!ok) return res.status(400).json({ message: 'Invalid credentials' });
-  const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+
+  // Check if active on another device
+  const now = new Date();
+  const activityThreshold = 45 * 1000; // 45 seconds (Buffer for 15s heartbeat)
+  if (user.currentSessionId && user.lastActive && (now - user.lastActive < activityThreshold)) {
+    return res.status(403).json({
+      message: 'Active session found on another device. Please logout from your other device or wait 45 seconds and try again.'
+    });
+  }
+
+  const sessionId = crypto.randomUUID();
+  user.currentSessionId = sessionId;
+  user.lastActive = now;
+  await user.save();
+
+  const token = jwt.sign({ id: user._id, sessionId }, process.env.JWT_SECRET, { expiresIn: '7d' });
   res.json({
     token,
     user: {
@@ -211,6 +230,21 @@ router.put('/change-password', protect, async (req, res) => {
     await user.save();
 
     res.json({ message: 'Password changed successfully' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Logout (protected route) - Clears server-side session
+router.post('/logout', protect, async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+    if (user) {
+      user.currentSessionId = undefined;
+      user.lastActive = undefined;
+      await user.save();
+    }
+    res.json({ message: 'Logged out successfully' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

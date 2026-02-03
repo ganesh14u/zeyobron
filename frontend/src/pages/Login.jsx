@@ -64,6 +64,13 @@ export default function Login() {
             </p>
           </div>
 
+          {/* Reason Alert (for Logout/Security triggers) */}
+          {new URLSearchParams(window.location.search).get('reason') && (
+            <div className="mb-8 p-4 bg-yellow-600/10 border border-yellow-600/30 rounded-2xl text-yellow-500 text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-3 animate-pulse">
+              <span>🔔</span> {new URLSearchParams(window.location.search).get('reason')}
+            </div>
+          )}
+
           {error && (
             <div className="mb-8 p-4 bg-red-600/10 border border-red-600/20 rounded-2xl text-red-500 text-[10px] font-black uppercase tracking-widest flex items-center gap-3">
               <span>⚠️</span> {error}

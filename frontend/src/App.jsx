@@ -1,4 +1,4 @@
-import { Routes, Route, useLocation } from 'react-router-dom';
+import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 import Home from './pages/Home';
@@ -10,14 +10,84 @@ import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import Profile from './pages/Profile';
 import Navbar from './components/Navbar';
-import Notification from './components/Notification';
+import Notification, { useNotification } from './components/Notification';
 import ConfirmDialog from './components/ConfirmDialog';
 import { API_URL } from './config';
 
 export default function App() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const notify = useNotification();
   const [isBackendLive, setIsBackendLive] = useState(true);
   const [isDetected, setIsDetected] = useState(false);
+
+  // Inactivity / Multi-device detection logic
+  useEffect(() => {
+    let idleTimer;
+    let sessionCheckTimer;
+
+    const logout = async (reason) => {
+      try {
+        const token = localStorage.getItem('token');
+        if (token) {
+          // Notify server to clear session so other devices can log in immediately
+          await axios.post(`${API_URL}/auth/logout`, {}, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+        }
+      } catch (err) {
+        console.error('Auto-logout server notification failed:', err);
+      } finally {
+        notify(reason, 'warning');
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.dispatchEvent(new Event('userDataUpdated'));
+        window.location.href = `/login?reason=${encodeURIComponent(reason)}`;
+      }
+    };
+
+    // 1. Inactivity Timer (1 Minute)
+    const resetIdleTimer = () => {
+      if (idleTimer) clearTimeout(idleTimer);
+      if (localStorage.getItem('token')) {
+        idleTimer = setTimeout(() => {
+          logout('Session expired due to inactivity');
+        }, 86400000); // 24 hours
+      }
+    };
+
+    // 2. Periodic Session Validation (Every 20s) - Handles multi-device logout
+    const validateSession = async () => {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      try {
+        await axios.get(`${API_URL}/auth/me`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+      } catch (err) {
+        if (err.response?.status === 401 && err.response?.data?.message === 'SESSION_EXPIRED') {
+          logout('Logged out: Active session detected on another device');
+        } else if (err.response?.status === 401) {
+          logout('Session invalid');
+        }
+      }
+    };
+
+    // Monitor activity
+    const activityEvents = ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart'];
+    if (localStorage.getItem('token')) {
+      activityEvents.forEach(evt => document.addEventListener(evt, resetIdleTimer));
+      resetIdleTimer();
+      sessionCheckTimer = setInterval(validateSession, 15000); // 15s Heartbeat
+    }
+
+    return () => {
+      if (idleTimer) clearTimeout(idleTimer);
+      if (sessionCheckTimer) clearInterval(sessionCheckTimer);
+      activityEvents.forEach(evt => document.removeEventListener(evt, resetIdleTimer));
+    };
+  }, [location.pathname]); // Re-run when switching pages
 
   // Check backend health
   useEffect(() => {
@@ -30,7 +100,7 @@ export default function App() {
       }
     };
     checkHealth();
-    const interval = setInterval(checkHealth, 10000);
+    const interval = setInterval(checkHealth, 30000);
     return () => clearInterval(interval);
   }, []);
 
@@ -38,7 +108,7 @@ export default function App() {
     // 1. Disable Right-Click
     const handleContextMenu = (e) => { e.preventDefault(); return false; };
 
-    // 2. Disable Keyboard Shortcuts (F12, Ctrl+Shift+I, etc)
+    // 2. Disable Keyboard Shortcuts
     const handleKeyDown = (e) => {
       if (
         e.key === 'F12' ||
@@ -52,24 +122,21 @@ export default function App() {
       }
     };
 
-    // 3. Detect DevTools via Window Resize
+    // 3. Resize detection
     const handleResize = () => {
       const threshold = 160;
-      const widthDiff = window.outerWidth - window.innerWidth;
-      const heightDiff = window.outerHeight - window.innerHeight;
-      if (widthDiff > threshold || heightDiff > threshold) {
+      if (window.outerWidth - window.innerWidth > threshold || window.outerHeight - window.innerHeight > threshold) {
         setIsDetected(true);
       }
     };
 
-    // 4. Debugger Loop (The ultimate "Kill Switch")
+    // 4. Debugger Trap
     const antiInspect = setInterval(() => {
       const start = new Date();
-      debugger; // This pauses execution if DevTools is open
+      debugger;
       const end = new Date();
       if (end - start > 100) {
         setIsDetected(true);
-        console.clear();
       }
     }, 1000);
 
@@ -97,7 +164,7 @@ export default function App() {
           </p>
           <button
             onClick={() => window.location.reload()}
-            className="mt-10 px-12 py-4 bg-green-600 text-white font-black text-[12px] uppercase tracking-[0.3em] rounded-2xl hover:bg-green-700 hover:scale-105 active:scale-95 transition-all shadow-2xl shadow-green-900/40"
+            className="mt-10 px-12 py-4 bg-green-600 text-white font-black text-[12px] uppercase tracking-[0.3em] rounded-2xl hover:bg-green-700 active:scale-95 transition-all shadow-2xl shadow-green-900/40"
           >
             Reset Application
           </button>
@@ -110,7 +177,7 @@ export default function App() {
     <div className="min-h-screen bg-[#141414] text-white">
       {!isBackendLive && (
         <div className="fixed top-0 left-0 right-0 z-[99999] bg-red-600 text-white text-center py-2 px-4 font-bold uppercase tracking-widest text-xs shadow-xl animate-pulse">
-          ⚠️ Backend Not Connected — Check Server Connection
+          ⚠️ Backend Not Connected
         </div>
       )}
       <Navbar />

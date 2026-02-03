@@ -4,9 +4,15 @@ let showNotificationFunction = null;
 
 export const useNotification = () => {
   return (message, type = 'info') => {
+    // 1. Try to show immediately if component is mounted
     if (showNotificationFunction) {
       showNotificationFunction(message, type);
     }
+
+    // 2. Always queue in localStorage to survive reloads/redirects
+    const pending = JSON.parse(localStorage.getItem('pendingNotifications') || '[]');
+    pending.push({ id: Date.now(), message, type, timestamp: Date.now() });
+    localStorage.setItem('pendingNotifications', JSON.stringify(pending));
   };
 };
 
@@ -14,18 +20,45 @@ export default function Notification() {
   const [notifications, setNotifications] = useState([]);
 
   useEffect(() => {
+    // Hook for immediate display
     showNotificationFunction = (message, type) => {
-      const id = Date.now();
-      setNotifications(prev => [...prev, { id, message, type }]);
+      // Don't show immediately if loader is active (stay in queue)
+      if (document.getElementById('global-loader')) return;
 
-      // Auto remove after 5 seconds
+      const id = Date.now();
+      setNotifications(prev => {
+        if (prev.find(n => n.message === message)) return prev; // Avoid duplicates
+        return [...prev, { id, message, type }];
+      });
+
       setTimeout(() => {
         setNotifications(prev => prev.filter(n => n.id !== id));
-      }, 5000);
+      }, 7000); // 7 seconds duration
     };
+
+    // Check for pending notifications from a previous page/reload
+    const checkPending = () => {
+      // Don't show queued items while loader is active
+      if (document.getElementById('global-loader')) return;
+
+      const pending = JSON.parse(localStorage.getItem('pendingNotifications') || '[]');
+      if (pending.length > 0) {
+        const now = Date.now();
+        const fresh = pending.filter(n => now - n.timestamp < 10000);
+
+        fresh.forEach(n => showNotificationFunction(n.message, n.type));
+        localStorage.removeItem('pendingNotifications');
+      }
+    };
+
+    checkPending();
+    const interval = setInterval(checkPending, 1000);
+    window.addEventListener('userDataUpdated', checkPending);
 
     return () => {
       showNotificationFunction = null;
+      clearInterval(interval);
+      window.removeEventListener('userDataUpdated', checkPending);
     };
   }, []);
 
@@ -33,87 +66,77 @@ export default function Notification() {
     setNotifications(prev => prev.filter(n => n.id !== id));
   };
 
-  const getIcon = (type) => {
+  const getIcon = (type) => (
+    <svg
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+      fill="none"
+      className="h-5 w-5 flex-shrink-0 mr-2"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        d="M13 16h-1v-4h1m0-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+        strokeWidth="2"
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      ></path>
+    </svg>
+  );
+
+  const getStyles = (type) => {
     switch (type) {
       case 'success':
-        return (
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-          </svg>
-        );
+        return 'bg-emerald-950/90 backdrop-blur-md border-emerald-500 text-emerald-100 hover:bg-emerald-900';
       case 'error':
-        return (
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        );
+        return 'bg-red-950/90 backdrop-blur-md border-red-500 text-red-100 hover:bg-red-900';
       case 'warning':
-        return (
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-          </svg>
-        );
-      default: // info
-        return (
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        );
+        return 'bg-amber-950/90 backdrop-blur-md border-amber-500 text-amber-100 hover:bg-amber-900';
+      case 'info':
+      default:
+        return 'bg-blue-950/90 backdrop-blur-md border-blue-500 text-blue-100 hover:bg-blue-900';
     }
   };
 
-  const getColors = (type) => {
+  const getIconColor = (type) => {
     switch (type) {
-      case 'success':
-        return 'bg-emerald-600 border-emerald-700 shadow-emerald-900/40';
-      case 'error':
-        return 'bg-red-600 border-red-700 shadow-red-900/40';
-      case 'warning':
-        return 'bg-yellow-600 border-yellow-700 shadow-yellow-900/40';
-      default:
-        return 'bg-blue-600 border-blue-700 shadow-blue-900/40';
+      case 'success': return 'text-emerald-500';
+      case 'error': return 'text-red-500';
+      case 'warning': return 'text-amber-500';
+      case 'info':
+      default: return 'text-blue-500';
     }
   };
 
   return (
-    <div className="fixed bottom-8 right-8 z-[999999] space-y-4">
+    <div className="fixed bottom-6 right-6 z-[2147483647] flex flex-col gap-3 min-w-[300px] max-w-sm pointer-events-none">
       {notifications.map(({ id, message, type }) => (
         <div
           key={id}
-          className={`${getColors(type)} border-l-4 text-white px-6 py-4 rounded-lg shadow-2xl min-w-[320px] max-w-md animate-slide-in flex items-start gap-3`}
-          style={{
-            animation: 'slideIn 0.3s ease-out'
-          }}
+          role="alert"
+          onClick={() => removeNotification(id)}
+          className={`${getStyles(type)} border-l-4 p-4 rounded-xl flex items-center transition duration-300 ease-in-out transform hover:scale-105 cursor-pointer shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-white/5 animate-notification pointer-events-auto`}
         >
-          <div className="flex-shrink-0 mt-0.5">
+          <div className={getIconColor(type)}>
             {getIcon(type)}
           </div>
-          <div className="flex-1">
-            <p className="font-medium text-sm leading-relaxed">{message}</p>
-          </div>
-          <button
-            onClick={() => removeNotification(id)}
-            className="flex-shrink-0 ml-2 hover:bg-white/20 rounded p-1 transition-colors"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+          <p className="text-[12px] font-black uppercase tracking-widest leading-tight">
+            {message}
+          </p>
         </div>
       ))}
       <style jsx>{`
-        @keyframes slideIn {
+        @keyframes notificationSlide {
           from {
-            transform: translateX(100%);
+            transform: translateX(100%) scale(0.9);
             opacity: 0;
           }
           to {
-            transform: translateX(0);
+            transform: translateX(0) scale(1);
             opacity: 1;
           }
         }
-        .animate-slide-in {
-          animation: slideIn 0.3s ease-out;
+        .animate-notification {
+          animation: notificationSlide 0.4s cubic-bezier(0.16, 1, 0.3, 1);
         }
       `}</style>
     </div>

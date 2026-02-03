@@ -2,9 +2,11 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { API_URL } from '../config';
+import { useNotification } from './Notification';
 
 export default function Navbar() {
   const navigate = useNavigate();
+  const notify = useNotification();
   const location = useLocation();
   const isAuthPage = ['/login', '/signup'].includes(location.pathname);
   const [user, setUser] = useState(null);
@@ -92,11 +94,23 @@ export default function Navbar() {
     return () => clearTimeout(debounceTimer);
   }, [searchQuery]);
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    setUser(null);
-    navigate('/login');
+  const handleLogout = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (token) {
+        await axios.post(`${API_URL}/auth/logout`, {}, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+      }
+    } catch (err) {
+      console.error('Logout error:', err);
+    } finally {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      setUser(null);
+      notify('Signed out successfully', 'info');
+      navigate('/login');
+    }
   };
 
   const handleSearchResultClick = (movieId) => {

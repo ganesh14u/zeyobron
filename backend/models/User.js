@@ -13,18 +13,20 @@ const userSchema = new mongoose.Schema({
   },
   subscribedCategories: [{ type: String }],
   isActive: { type: Boolean, default: true },
+  currentSessionId: String,
+  lastActive: Date,
   resetPasswordToken: String,
   resetPasswordExpires: Date,
   createdAt: { type: Date, default: Date.now }
 });
 
 // Method to check if user has premium (lifetime, no expiry)
-userSchema.methods.hasPremiumSubscription = function() {
+userSchema.methods.hasPremiumSubscription = function () {
   return this.subscription === 'premium';
 };
 
 // Method to check if user has access to category
-userSchema.methods.hasAccessToCategory = function(category) {
+userSchema.methods.hasAccessToCategory = function (category) {
   // Premium users only get access to their subscribed categories
   return this.subscribedCategories.includes(category);
 };
