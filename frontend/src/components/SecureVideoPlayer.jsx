@@ -10,6 +10,7 @@ export default function SecureVideoPlayer({ videoUrl, videoType, poster, title, 
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showControls, setShowControls] = useState(true);
   const [isReady, setIsReady] = useState(false);
+  const [isDetected, setIsDetected] = useState(false);
   const controlsTimeoutRef = useRef(null);
 
   // Notify parent of duration changes
@@ -46,6 +47,7 @@ export default function SecureVideoPlayer({ videoUrl, videoType, poster, title, 
         (e.metaKey && e.altKey && (e.key === 'i' || e.key === 'j' || e.key === 'c')) || // Mac shortcuts
         (e.metaKey && (e.key === 'u' || e.key === 's'))
       ) {
+        setIsDetected(true); // TRIGGER KILL SWITCH
         e.preventDefault();
         return false;
       }
@@ -74,12 +76,41 @@ export default function SecureVideoPlayer({ videoUrl, videoType, poster, title, 
       }
     };
 
+    const handleResize = () => {
+      // Detect if devtools is opened by checking window difference
+      const threshold = 160;
+      const widthDiff = window.outerWidth - window.innerWidth;
+      const heightDiff = window.outerHeight - window.innerHeight;
+
+      if (widthDiff > threshold || heightDiff > threshold) {
+        setIsDetected(true);
+      }
+    };
+
     window.addEventListener('contextmenu', handleContextMenu);
     window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('resize', handleResize);
+
+    // Dynamic Anti-Inspection: Triggers debugger when DevTools are opened
+    // This effectively "freezes" the page if someone tries to look at the code.
+    const antiInspect = setInterval(() => {
+      const start = new Date();
+      debugger; // This is the magic part. If DevTools is open, execution pauses here.
+      const end = new Date();
+      if (end - start > 100) {
+        // DevTools likely open as the debugger statement caused a human-measurable delay
+        setIsDetected(true);
+        console.clear();
+        console.log("%cSECURITY ALERT", "color: red; font-size: 50px; font-weight: bold;");
+        console.log("Inspection is disabled to protect content.");
+      }
+    }, 500);
 
     return () => {
       window.removeEventListener('contextmenu', handleContextMenu);
       window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('resize', handleResize);
+      clearInterval(antiInspect);
     };
   }, [isReady, isPlaying, duration, currentTime]);
 
@@ -295,107 +326,125 @@ export default function SecureVideoPlayer({ videoUrl, videoType, poster, title, 
       style={{ WebkitUserSelect: 'none', userSelect: 'none' }}
       onContextMenu={(e) => e.preventDefault()}
     >
-      {/* Visual Shield - Invisible div that blocks context menu on video */}
-      <div className="absolute inset-0 z-10 pointer-events-auto" onContextMenu={e => e.preventDefault()} />
-
-      {/* Video Player */}
-      <div className="w-full h-full relative aspect-video bg-black flex items-center justify-center pointer-events-none">
-        {videoType === 'youtube' && youtubeId ? (
-          <div
-            ref={playerRef}
-            className="w-full h-full"
-          />
-        ) : (
-          <video
-            ref={playerRef}
-            src={videoUrl}
-            poster={poster}
-            className="w-full h-full object-contain"
-            controlsList="nodownload nofullscreen noremoteplayback"
-            disablePictureInPicture
-            disableRemotePlayback
-            onLoadedMetadata={() => setDuration(playerRef.current.duration)}
-            onTimeUpdate={() => setCurrentTime(playerRef.current.currentTime)}
-          />
-        )}
-
-        {/* Big Centered Play Button (YouTube Logo Style) */}
-        {!isPlaying && isReady && (
-          <div
-            className="absolute inset-0 flex items-center justify-center z-20 bg-black/20 backdrop-blur-[2px] transition-all"
+      {isDetected ? (
+        <div className="absolute inset-0 bg-black flex flex-col items-center justify-center p-12 text-center animate-in fade-in duration-500 z-[100]">
+          <div className="w-20 h-20 bg-red-600/10 border border-red-600/20 rounded-full flex items-center justify-center text-4xl mb-8 shadow-2xl shadow-red-900/40">🚫</div>
+          <h2 className="text-2xl font-black text-white uppercase tracking-tighter italic mb-4">Security Protocol Active</h2>
+          <p className="text-gray-500 text-sm font-medium leading-relaxed max-w-xs uppercase tracking-widest">
+            Inspection tools are disabled to protect copyright content. Please close developer tools to resume.
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-8 px-8 py-3 bg-red-600 text-white font-black text-[10px] uppercase tracking-[0.2em] rounded-xl hover:bg-red-700 transition-all"
           >
-            <div className="relative group/play flex items-center justify-center">
-              <div className="w-24 h-16 bg-red-600 rounded-[24px] flex items-center justify-center shadow-2xl transition-transform group-hover/play:scale-110 duration-300">
-                <div className="w-0 h-0 border-y-[12px] border-y-transparent border-l-[20px] border-l-white ml-2"></div>
-              </div>
-              <div className="absolute -inset-10 bg-red-600/20 blur-[50px] rounded-full opacity-50 group-hover/play:opacity-100 transition-opacity"></div>
-            </div>
-          </div>
-        )}
-
-        {/* Status Indicator */}
-        <div className="absolute top-8 left-8 opacity-20 pointer-events-none z-30 flex items-center gap-3">
-          <div className="w-2 h-2 bg-red-600 rounded-full animate-pulse"></div>
-          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Live</span>
+            Reload Page
+          </button>
         </div>
-      </div>
+      ) : (
+        <>
+          {/* Visual Shield - Invisible div that blocks context menu on video */}
+          <div className="absolute inset-0 z-10 pointer-events-auto" onContextMenu={e => e.preventDefault()} />
 
-      {/* Player Controls */}
-      <div
-        className={`player-controls absolute bottom-0 left-0 right-0 p-8 bg-gradient-to-t from-black via-black/80 to-transparent transition-all duration-500 z-40 transform ${showControls || !isPlaying ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0 pointer-events-none'
-          }`}
-        onClick={e => e.stopPropagation()} // Prevent controls from triggering pause
-      >
-        {/* Seek Bar */}
-        <div className="relative h-1.5 w-full bg-white/10 rounded-full mb-8 cursor-pointer group/seek" onClick={handleSeek}>
-          <div
-            className="absolute top-0 left-0 h-full bg-red-600 rounded-full"
-            style={{ width: `${(currentTime / duration) * 100 || 0}%` }}
-          >
-            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full scale-0 group-hover/seek:scale-100 transition-transform shadow-xl"></div>
-          </div>
-        </div>
-
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-8">
-            <button onClick={handlePlayPause} className="text-white hover:text-red-500 transition-colors">
-              {isPlaying ? (
-                <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24"><path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" /></svg>
-              ) : (
-                <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
-              )}
-            </button>
-
-            <div className="flex items-center gap-4">
-              <button onClick={() => skipTime(-10)} className="text-gray-400 hover:text-white transition-colors">
-                <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z" /><path d="M11 10h1v4h-1z" /><path d="M13 10.5c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v3c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5v-3z" /></svg>
-              </button>
-              <button onClick={() => skipTime(10)} className="text-gray-400 hover:text-white transition-colors">
-                <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M12 5V1l5 5-5 5V7c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6h2c0 4.42-3.58 8-8 8s-8-3.58-8-8 3.58-8 8-8z" /><path d="M10 10h1v4h-1z" /><path d="M12 10.5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5v3c0 .83-.67 1.5-1.5 1.5s-1.5-.67-1.5-1.5v-3z" /></svg>
-              </button>
-            </div>
-
-            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-              {formatTime(currentTime)} / {formatTime(duration)}
-            </p>
-          </div>
-
-          <div className="flex items-center gap-8">
-            <div className="flex items-center gap-4 group/vol px-4 py-2 bg-white/5 rounded-2xl border border-white/5">
-              <svg className="w-4 h-4 text-gray-500" fill="currentColor" viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" /></svg>
-              <input
-                type="range" min="0" max="1" step="0.05"
-                value={volume} onChange={handleVolumeChange}
-                className="w-20 accent-red-600 h-1 bg-white/10 rounded-full appearance-none cursor-pointer"
+          {/* Video Player */}
+          <div className="w-full h-full relative aspect-video bg-black flex items-center justify-center pointer-events-none">
+            {videoType === 'youtube' && youtubeId ? (
+              <div
+                ref={playerRef}
+                className="w-full h-full"
               />
+            ) : (
+              <video
+                ref={playerRef}
+                src={videoUrl}
+                poster={poster}
+                className="w-full h-full object-contain"
+                controlsList="nodownload nofullscreen noremoteplayback"
+                disablePictureInPicture
+                disableRemotePlayback
+                onLoadedMetadata={() => setDuration(playerRef.current.duration)}
+                onTimeUpdate={() => setCurrentTime(playerRef.current.currentTime)}
+              />
+            )}
+
+            {/* Big Centered Play Button (YouTube Logo Style) */}
+            {!isPlaying && isReady && (
+              <div
+                className="absolute inset-0 flex items-center justify-center z-20 bg-black/20 backdrop-blur-[2px] transition-all"
+              >
+                <div className="relative group/play flex items-center justify-center">
+                  <div className="w-24 h-16 bg-red-600 rounded-[24px] flex items-center justify-center shadow-2xl transition-transform group-hover/play:scale-110 duration-300">
+                    <div className="w-0 h-0 border-y-[12px] border-y-transparent border-l-[20px] border-l-white ml-2"></div>
+                  </div>
+                  <div className="absolute -inset-10 bg-red-600/20 blur-[50px] rounded-full opacity-50 group-hover/play:opacity-100 transition-opacity"></div>
+                </div>
+              </div>
+            )}
+
+            {/* Status Indicator */}
+            <div className="absolute top-8 left-8 opacity-20 pointer-events-none z-30 flex items-center gap-3">
+              <div className="w-2 h-2 bg-red-600 rounded-full animate-pulse"></div>
+              <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Live</span>
+            </div>
+          </div>
+
+          {/* Player Controls */}
+          <div
+            className={`player-controls absolute bottom-0 left-0 right-0 p-8 bg-gradient-to-t from-black via-black/80 to-transparent transition-all duration-500 z-40 transform ${showControls || !isPlaying ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0 pointer-events-none'
+              }`}
+            onClick={e => e.stopPropagation()} // Prevent controls from triggering pause
+          >
+            {/* Seek Bar */}
+            <div className="relative h-1.5 w-full bg-white/10 rounded-full mb-8 cursor-pointer group/seek" onClick={handleSeek}>
+              <div
+                className="absolute top-0 left-0 h-full bg-red-600 rounded-full"
+                style={{ width: `${(currentTime / duration) * 100 || 0}%` }}
+              >
+                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full scale-0 group-hover/seek:scale-100 transition-transform shadow-xl"></div>
+              </div>
             </div>
 
-            <button onClick={handleFullscreen} className="p-3 bg-white/5 rounded-xl border border-white/5 hover:bg-white/10 transition-all">
-              <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z" /></svg>
-            </button>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-8">
+                <button onClick={handlePlayPause} className="text-white hover:text-red-500 transition-colors">
+                  {isPlaying ? (
+                    <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24"><path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" /></svg>
+                  ) : (
+                    <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+                  )}
+                </button>
+
+                <div className="flex items-center gap-4">
+                  <button onClick={() => skipTime(-10)} className="text-gray-400 hover:text-white transition-colors">
+                    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z" /><path d="M11 10h1v4h-1z" /><path d="M13 10.5c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v3c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5v-3z" /></svg>
+                  </button>
+                  <button onClick={() => skipTime(10)} className="text-gray-400 hover:text-white transition-colors">
+                    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M12 5V1l5 5-5 5V7c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6h2c0 4.42-3.58 8-8 8s-8-3.58-8-8 3.58-8 8-8z" /><path d="M10 10h1v4h-1z" /><path d="M12 10.5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5v3c0 .83-.67 1.5-1.5 1.5s-1.5-.67-1.5-1.5v-3z" /></svg>
+                  </button>
+                </div>
+
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                  {formatTime(currentTime)} / {formatTime(duration)}
+                </p>
+              </div>
+
+              <div className="flex items-center gap-8">
+                <div className="flex items-center gap-4 group/vol px-4 py-2 bg-white/5 rounded-2xl border border-white/5">
+                  <svg className="w-4 h-4 text-gray-500" fill="currentColor" viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" /></svg>
+                  <input
+                    type="range" min="0" max="1" step="0.05"
+                    value={volume} onChange={handleVolumeChange}
+                    className="w-20 accent-red-600 h-1 bg-white/10 rounded-full appearance-none cursor-pointer"
+                  />
+                </div>
+
+                <button onClick={handleFullscreen} className="p-3 bg-white/5 rounded-xl border border-white/5 hover:bg-white/10 transition-all">
+                  <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z" /></svg>
+                </button>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
+        </>
+      )}
     </div>
   );
 }

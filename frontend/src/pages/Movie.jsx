@@ -13,6 +13,7 @@ export default function Movie() {
   const [loading, setLoading] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
   const [accessReason, setAccessReason] = useState('');
+  const [videoData, setVideoData] = useState({ url: null, type: 'direct' });
   const token = localStorage.getItem('token');
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
@@ -76,26 +77,62 @@ export default function Movie() {
           setRelatedMovies(related);
 
           // DETERMINE ACCESS
+          let hasAccessFlag = false;
           if (isAdmin) {
-            setHasAccess(true);
+            hasAccessFlag = true;
             setAccessReason('Admin Access');
           } else if (isPremiumUser) {
-            setHasAccess(true);
+            hasAccessFlag = true;
             setAccessReason('Premium Subscription');
           } else {
             // Free User
             if (!isPremiumContent) {
-              setHasAccess(true);
+              hasAccessFlag = true;
               setAccessReason('Free Content');
             } else {
-              setHasAccess(false);
+              hasAccessFlag = false;
               setAccessReason('Premium Content is Locked');
+            }
+          }
+          setHasAccess(hasAccessFlag);
+
+          // Fetch Video URL if access is granted
+          if (hasAccessFlag) {
+            try {
+              const playRes = await axios.get(`${API_URL}/movies/${id}/play`, {
+                headers: { Authorization: `Bearer ${token}` }
+              });
+              setVideoData({
+                url: playRes.data.videoUrl,
+                type: playRes.data.videoType
+              });
+            } catch (err) {
+              console.error('Failed to fetch video URL', err);
+              setHasAccess(false);
             }
           }
 
         } else {
           // GUEST (No Token)
-          setHasAccess(!movieData.isPremium);
+          const isFree = !movieData.isPremium;
+          setHasAccess(isFree);
+          if (isFree) {
+            // Free users still need the URL, but the backend /play route requires 'protect' (auth)
+            // WE SHOULD PROBABLY ALLOW GUESTS TO HIT /play OR MAKE A PUBLIC play ROUTE FOR FREE CONTENT
+            // For now, let's assume all users must be logged in for security, OR we update backend.
+            // Actually, let's allow guests to see the URL if it's free content by fetching it here if no token?
+            // Wait, the backend /play is protected. Let's fix backend to allow public if free.
+            try {
+              const playRes = await axios.get(`${API_URL}/movies/${id}/play`); // No token needed for free content if backend allows
+              setVideoData({
+                url: playRes.data.videoUrl,
+                type: playRes.data.videoType
+              });
+            } catch (err) {
+              console.error('Failed to fetch video URL for guest free content', err);
+              setHasAccess(false);
+            }
+          }
           // Guests can see related cards but locks apply
           setRelatedMovies(related);
         }
@@ -140,11 +177,11 @@ export default function Movie() {
             <h1 className="text-xl md:text-2xl font-black text-white tracking-tighter uppercase leading-tight italic pl-2">{movie.title}</h1>
 
             <div className="relative aspect-video rounded-[2.5rem] overflow-hidden bg-[#000] border border-white/5 shadow-2xl group">
-              {movie.videoUrl && hasAccess ? (
+              {videoData.url && hasAccess ? (
                 <SecureVideoPlayer
                   key={movie._id}
-                  videoUrl={movie.videoUrl}
-                  videoType={movie.videoType || 'direct'}
+                  videoUrl={videoData.url}
+                  videoType={videoData.type || 'direct'}
                   poster={movie.poster}
                   title={movie.title}
                 />

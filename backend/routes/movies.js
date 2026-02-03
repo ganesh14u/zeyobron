@@ -48,9 +48,62 @@ router.get('/', async (req, res) => {
 });
 
 router.get('/:id', async (req, res) => {
-  const movie = await Movie.findById(req.params.id);
-  if (!movie) return res.status(404).json({ message: 'Not found' });
-  res.json(movie);
+  try {
+    const movie = await Movie.findById(req.params.id).select('-videoUrl');
+    if (!movie) return res.status(404).json({ message: 'Not found' });
+    res.json(movie);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Securely fetch video URL for authorized users
+router.get('/:id/play', async (req, res) => {
+  try {
+    const movie = await Movie.findById(req.params.id);
+    if (!movie) return res.status(404).json({ message: 'Movie not found' });
+
+    // 1. If content is free, anyone can watch (including guests)
+    if (!movie.isPremium) {
+      return res.json({
+        videoUrl: movie.videoUrl,
+        videoType: movie.videoType || 'direct'
+      });
+    }
+
+    // 2. If content is premium, check authentication
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ message: 'Authentication required for premium content' });
+    }
+
+    const token = authHeader.split(' ')[1];
+    const jwt = await import('jsonwebtoken');
+    const User = await import('../models/User.js');
+
+    try {
+      const decoded = jwt.default.verify(token, process.env.JWT_SECRET);
+      const user = await User.default.findById(decoded.id);
+
+      if (!user) return res.status(401).json({ message: 'User not found' });
+
+      const isAdmin = user.role === 'admin';
+      const isPremiumUser = (user.subscription || '').toLowerCase() === 'premium';
+
+      if (isAdmin || isPremiumUser) {
+        return res.json({
+          videoUrl: movie.videoUrl,
+          videoType: movie.videoType || 'direct'
+        });
+      }
+
+      res.status(403).json({ message: 'Premium subscription required' });
+    } catch (err) {
+      res.status(401).json({ message: 'Invalid token' });
+    }
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 });
 
 // Check video access - requires authentication
