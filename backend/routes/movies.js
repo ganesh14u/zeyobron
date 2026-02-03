@@ -51,6 +51,31 @@ router.get('/:id', async (req, res) => {
   try {
     const movie = await Movie.findById(req.params.id).select('-videoUrl');
     if (!movie) return res.status(404).json({ message: 'Not found' });
+
+    // Check Authorization for links in description
+    const authHeader = req.headers.authorization;
+    let hasAccess = false;
+
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.split(' ')[1];
+      const jwt = await import('jsonwebtoken');
+      const User = await import('../models/User.js');
+      try {
+        const decoded = jwt.default.verify(token, process.env.JWT_SECRET);
+        const user = await User.default.findById(decoded.id);
+        if (user && (user.role === 'admin' || user.subscription?.toLowerCase() === 'premium')) {
+          hasAccess = true;
+        }
+      } catch (err) { /* token invalid, hasAccess remains false */ }
+    }
+
+    // If not authorized and content has a description, mask the links
+    if (!hasAccess && movie.description) {
+      // Basic URL regex to find links and mask them
+      const urlRegex = /(https?:\/\/[^\s]+)/g;
+      movie.description = movie.description.replace(urlRegex, '[PREMIUM_LINK_UNLOCKED_MARKER]');
+    }
+
     res.json(movie);
   } catch (error) {
     res.status(500).json({ message: error.message });

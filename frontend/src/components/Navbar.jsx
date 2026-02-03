@@ -124,12 +124,19 @@ export default function Navbar() {
       {/* Left Section: Logo & Links */}
       <div className="flex items-center gap-8">
         <div
-          className="text-2xl font-black cursor-pointer tracking-tighter transition-transform active:scale-95 group"
+          className="cursor-pointer transition-all duration-500 active:scale-95 group flex items-center"
           onClick={() => navigate('/')}
         >
-          <span className="bg-gradient-to-r from-red-600 to-red-400 bg-clip-text text-transparent group-hover:from-red-500 group-hover:to-red-300 italic uppercase">
-            Data Sai
-          </span>
+          <div className="flex items-center select-none tracking-tighter">
+            <span className="text-2xl font-medium text-gray-300 uppercase tracking-[0.05em]">
+              Data
+            </span>
+            <span className="text-2xl font-black bg-gradient-to-r from-red-600 to-red-500 bg-clip-text text-transparent uppercase ml-1">
+              Sai
+            </span>
+          </div>
+          {/* Modern Divider */}
+          <div className="h-6 w-[1px] bg-white/10 mx-6 hidden lg:block"></div>
         </div>
       </div>
 

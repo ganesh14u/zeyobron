@@ -17,93 +17,94 @@ import { API_URL } from './config';
 export default function App() {
   const location = useLocation();
   const [isBackendLive, setIsBackendLive] = useState(true);
+  const [isDetected, setIsDetected] = useState(false);
 
   // Check backend health
   useEffect(() => {
     const checkHealth = async () => {
       try {
         await axios.get(`${API_URL}/health`);
-
         setIsBackendLive(true);
       } catch (err) {
         setIsBackendLive(false);
       }
     };
-
     checkHealth();
-    const interval = setInterval(checkHealth, 10000); // Check every 10 seconds
+    const interval = setInterval(checkHealth, 10000);
     return () => clearInterval(interval);
   }, []);
 
-  const isLoginPage = location.pathname === '/login' ||
-    location.pathname === '/forgot-password' ||
-    location.pathname.startsWith('/reset-password');
-
   useEffect(() => {
-    // Global anti-right click logic
-    const handleContextMenu = (e) => {
-      e.preventDefault();
-      return false;
-    };
+    // 1. Disable Right-Click
+    const handleContextMenu = (e) => { e.preventDefault(); return false; };
 
-    // Global anti-developer tools logic
+    // 2. Disable Keyboard Shortcuts (F12, Ctrl+Shift+I, etc)
     const handleKeyDown = (e) => {
-      // Prevent F12 (DevTools)
-      if (e.key === 'F12') {
-        e.preventDefault();
-        return false;
-      }
-
-      // Prevent Ctrl+Shift+I, J, C (Windows/Linux)
-      if (e.ctrlKey && e.shiftKey && ['I', 'J', 'C'].includes(e.key.toUpperCase())) {
-        e.preventDefault();
-        return false;
-      }
-
-      // Prevent Cmd+Option+I, J, C (Mac)
-      if (e.metaKey && e.altKey && ['I', 'J', 'C'].includes(e.key.toUpperCase())) {
-        e.preventDefault();
-        return false;
-      }
-
-      // Prevent Cmd/Ctrl + U (View Source)
-      if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === 'u')) {
-        e.preventDefault();
-        return false;
-      }
-
-      // Prevent Cmd/Ctrl + S (Save Page)
-      if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === 's')) {
-        e.preventDefault();
-        return false;
-      }
-
-      // Prevent Cmd/Ctrl + P (Print Page)
-      if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === 'p')) {
+      if (
+        e.key === 'F12' ||
+        (e.ctrlKey && e.shiftKey && ['I', 'J', 'C'].includes(e.key.toUpperCase())) ||
+        (e.metaKey && e.altKey && ['I', 'J', 'C'].includes(e.key.toUpperCase())) ||
+        ((e.ctrlKey || e.metaKey) && ['U', 'S', 'P'].includes(e.key.toUpperCase()))
+      ) {
+        setIsDetected(true);
         e.preventDefault();
         return false;
       }
     };
 
-    // Prevent dragging images
-    const handleDragStart = (e) => {
-      if (e.target.tagName === 'IMG') {
-        e.preventDefault();
+    // 3. Detect DevTools via Window Resize
+    const handleResize = () => {
+      const threshold = 160;
+      const widthDiff = window.outerWidth - window.innerWidth;
+      const heightDiff = window.outerHeight - window.innerHeight;
+      if (widthDiff > threshold || heightDiff > threshold) {
+        setIsDetected(true);
       }
     };
 
-    // Add event listeners
+    // 4. Debugger Loop (The ultimate "Kill Switch")
+    const antiInspect = setInterval(() => {
+      const start = new Date();
+      debugger; // This pauses execution if DevTools is open
+      const end = new Date();
+      if (end - start > 100) {
+        setIsDetected(true);
+        console.clear();
+      }
+    }, 1000);
+
     document.addEventListener('contextmenu', handleContextMenu);
     document.addEventListener('keydown', handleKeyDown);
-    document.addEventListener('dragstart', handleDragStart);
+    window.addEventListener('resize', handleResize);
+    document.addEventListener('dragstart', (e) => e.target.tagName === 'IMG' && e.preventDefault());
 
-    // Cleanup
     return () => {
       document.removeEventListener('contextmenu', handleContextMenu);
       document.removeEventListener('keydown', handleKeyDown);
-      document.removeEventListener('dragstart', handleDragStart);
+      window.removeEventListener('resize', handleResize);
+      clearInterval(antiInspect);
     };
   }, []);
+
+  if (isDetected) {
+    return (
+      <div className="fixed inset-0 bg-[#050505] z-[999999] flex items-center justify-center p-6 text-center select-none overflow-hidden">
+        <div className="max-w-md w-full animate-in fade-in zoom-in duration-500">
+          <div className="w-60 h-80 bg-red-600/20 border border-red-600/20 rounded-full flex items-center justify-center text-8xl mx-auto mb-8 shadow-[0_0_100px_rgba(220,38,38,0.3)] border-dashed border-spacing-4 animate-pulse">👨🏻‍💻</div>
+          <h2 className="text-3xl font-black text-white uppercase tracking-tighter italic mb-4">Security Protocol Actived</h2>
+          <p className="text-red-600 text-sm font-black leading-relaxed max-w-xs mx-auto uppercase tracking-widest bg-red-600/5 py-4 rounded-xl border border-red-600/10">
+            Inspection tools are disabled to protect copyright content. Please close developer tools to resume.
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-10 px-12 py-4 bg-green-600 text-white font-black text-[12px] uppercase tracking-[0.3em] rounded-2xl hover:bg-green-700 hover:scale-105 active:scale-95 transition-all shadow-2xl shadow-green-900/40"
+          >
+            Reset Application
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#141414] text-white">
@@ -112,7 +113,7 @@ export default function App() {
           ⚠️ Backend Not Connected — Check Server Connection
         </div>
       )}
-      <Navbar /> {/* Navbar now shown on all pages */}
+      <Navbar />
       <Notification />
       <ConfirmDialog />
       <Routes>

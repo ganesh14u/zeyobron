@@ -18,11 +18,11 @@ export default function Movie() {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
 
-
   useEffect(() => {
     const fetchMovie = async () => {
       try {
-        const response = await axios.get(`${API_URL}/movies/${id}`);
+        const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+        const response = await axios.get(`${API_URL}/movies/${id}`, config);
         const movieData = response.data;
         setMovie(movieData);
 
@@ -156,6 +156,7 @@ export default function Movie() {
 
   if (!movie) return null;
 
+
   return (
     <div className="min-h-screen bg-[#050505]">
       {/* Background Ambient Glow */}
@@ -242,7 +243,48 @@ export default function Movie() {
                 <h3 className="text-xs font-black text-gray-500 uppercase tracking-widest mb-6 flex items-center gap-2">
                   <span className="w-1.5 h-1.5 bg-red-600 rounded-full"></span> Description
                 </h3>
-                <p className="text-lg text-gray-300 font-medium leading-relaxed italic">{movie.description}</p>
+                <div className="text-lg text-gray-300 font-medium leading-relaxed italic whitespace-pre-wrap">
+                  {movie.description.split('[PREMIUM_LINK_UNLOCKED_MARKER]').map((part, i, arr) => {
+                    const urlRegex = /(https?:\/\/[^\s]+)/g;
+                    // Splitting with capturing group includes the matches in the array
+                    const subParts = part.split(urlRegex);
+
+                    return (
+                      <span key={i}>
+                        {subParts.map((subPart, index) => {
+                          if (subPart.match(urlRegex)) {
+                            return (
+                              <a
+                                key={index}
+                                href={subPart}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-red-500 hover:text-red-400 underline decoration-red-500/30 underline-offset-4 hover:decoration-red-400 font-bold transition-all not-italic inline-block"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                {subPart}
+                              </a>
+                            );
+                          }
+                          return subPart;
+                        })}
+                        {i < arr.length - 1 && (
+                          <div className="my-6 p-6 bg-gradient-to-r from-yellow-500/10 to-orange-500/5 border border-yellow-500/20 rounded-2xl inline-block w-full max-w-md not-italic">
+                            <p className="text-sm font-black text-yellow-500 uppercase tracking-widest mb-4 flex items-center gap-2">
+                              🔒 Link Masked
+                            </p>
+                            <button
+                              onClick={() => navigate('/profile')}
+                              className="px-8 py-3 bg-gradient-to-r from-yellow-500 to-orange-600 text-black font-black text-[10px] uppercase tracking-[0.2em] rounded-xl hover:scale-105 transition-all shadow-xl shadow-yellow-900/20"
+                            >
+                              Subscribe to Unlock Link
+                            </button>
+                          </div>
+                        )}
+                      </span>
+                    );
+                  })}
+                </div>
               </div>
             )}
           </div>

@@ -117,71 +117,76 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-[#020202] text-white relative overflow-hidden select-none">
-      {/* Ambient Background Lighting */}
+      {/* Refined Ambient Background Lighting */}
       <div className="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
-        <div className="absolute top-[-20%] left-[-10%] w-[80vw] h-[80vw] bg-red-900/10 rounded-full blur-[150px] animate-pulse-slow"></div>
-        <div className="absolute bottom-[-20%] right-[-10%] w-[60vw] h-[60vw] bg-blue-900/10 rounded-full blur-[150px] animate-pulse-slow delay-1000"></div>
+        <div className="absolute top-[-10%] right-[-10%] w-[70vw] h-[70vw] bg-red-600/[0.03] rounded-full blur-[120px] animate-pulse-slow"></div>
+        <div className="absolute bottom-[-10%] left-[-10%] w-[50vw] h-[50vw] bg-red-900/[0.05] rounded-full blur-[120px] animate-pulse-slow delay-700"></div>
+        {/* Subtle Grid Pattern overlay */}
+        <div className="absolute inset-0 opacity-[0.03] bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]"></div>
       </div>
 
       {/* Cinematic Hero Section */}
       {featured.length > 0 && featured[activeHeroIdx] && (
-        <section className="relative h-[90vh] w-full group overflow-hidden z-10">
-          <div className="absolute inset-0 transition-opacity duration-1000" key={featured[activeHeroIdx]?._id}>
-            <img
-              src={featured[activeHeroIdx].poster}
-              alt={featured[activeHeroIdx].title}
-              className="w-full h-full object-cover scale-105 group-hover:scale-100 transition-all duration-[3000ms] ease-out animate-in fade-in zoom-in-105"
-            />
-            {/* Professional Gradient Overlays */}
-            <div className="absolute inset-0 bg-gradient-to-t from-[#020202] via-[#020202]/60 to-transparent"></div>
-            <div className="absolute inset-0 bg-gradient-to-r from-black via-black/40 to-transparent"></div>
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-transparent via-black/20 to-black/80 opacity-60"></div>
+        <section className="relative h-[85vh] w-full group overflow-hidden z-10">
+          <div className="absolute inset-0 transition-all duration-[2000ms] ease-out" key={featured[activeHeroIdx]?._id}>
+            <div className="absolute inset-0 scale-100 group-hover:scale-110 transition-transform duration-[10000ms] ease-out">
+              <img
+                src={featured[activeHeroIdx].poster}
+                alt={featured[activeHeroIdx].title}
+                className="w-full h-full object-cover opacity-80"
+              />
+            </div>
+
+            {/* Multi-layered cinematic overlays */}
+            <div className="absolute inset-0 bg-gradient-to-t from-[#020202] via-[#020202]/40 to-transparent"></div>
+            <div className="absolute inset-0 bg-gradient-to-r from-[#020202] via-[#020202]/50 to-transparent"></div>
+            <div className="absolute inset-0 bg-black/20 backdrop-blur-[2px]"></div>
           </div>
 
-          <div className="absolute inset-0 flex items-center px-4 md:px-16 pb-12" key={`content-${featured[activeHeroIdx]?._id}`}>
-            <div className="max-w-2xl space-y-6 pt-32 animate-in fade-in slide-in-from-bottom-8 duration-1000">
-              {/* Netflix-style Metadata Line */}
-              <div className="flex items-center gap-3 text-sm font-bold shadow-black drop-shadow-md">
-                <span className="text-red-600 font-black tracking-widest uppercase">LESSONS</span>
-                {featured[activeHeroIdx].batchNo && (
-                  <>
-                    <span className="text-gray-400">•</span>
-                    <span className="text-gray-200">{featured[activeHeroIdx].batchNo}</span>
-                  </>
-                )}
+          <div className="absolute inset-0 flex items-center px-6 md:px-20 z-20" key={`content-${featured[activeHeroIdx]?._id}`}>
+            <div className="max-w-3xl space-y-8 animate-in fade-in slide-in-from-left-12 duration-1000">
+              <div className="inline-flex items-center gap-3 px-4 py-2 bg-red-600/10 border border-red-600/20 rounded-full backdrop-blur-xl">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-red-600"></span>
+                </span>
+                <span className="text-[10px] font-black tracking-[0.3em] text-red-500 uppercase">
+                  Featured Lesson
+                </span>
               </div>
 
-              {/* Title - Bold, Solid White */}
-              <h1 className="text-4xl md:text-5xl font-black text-white tracking-tighter leading-none drop-shadow-2xl uppercase">
-                {featured[activeHeroIdx].title}
-              </h1>
+              <div className="space-y-4">
+                <h1 className="text-5xl md:text-7xl font-black text-white tracking-tight leading-[0.9] uppercase italic">
+                  {featured[activeHeroIdx].title}
+                </h1>
+                <div className="flex items-center gap-4 text-xs font-bold text-gray-400 uppercase tracking-widest">
+                  <span>Batch {featured[activeHeroIdx].batchNo || '01'}</span>
+                  <span className="w-1 h-1 bg-white/20 rounded-full"></span>
+                  <span className="text-red-500">Premium Content</span>
+                </div>
+              </div>
 
-              {/* Description - Concise */}
-              <p className="text-lg text-white drop-shadow-md font-medium line-clamp-3 max-w-xl italic">
+              <p className="text-xl text-gray-300 font-medium leading-relaxed max-w-xl italic line-clamp-2">
                 {featured[activeHeroIdx].description}
               </p>
 
-              {/* Professional Action Buttons */}
-              <div className="flex flex-wrap items-center gap-4 pt-4 relative z-50">
+              <div className="flex flex-wrap items-center gap-6 pt-4 relative z-50">
                 <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    navigate(`/movie/${featured[activeHeroIdx]._id}`);
-                  }}
-                  className="px-10 py-4 bg-white text-black font-black rounded-xl flex items-center gap-3 hover:bg-red-600 hover:text-white transition-all text-sm md:text-base shadow-2xl active:scale-95"
+                  onClick={() => navigate(`/movie/${featured[activeHeroIdx]._id}`)}
+                  className="group relative px-10 py-4 bg-white text-black font-black rounded-2xl overflow-hidden transition-all active:scale-95 shadow-2xl shadow-white/5"
                 >
-                  <span className="text-xl">▶</span> PLAY NOW
+                  <div className="absolute inset-0 bg-red-600 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
+                  <span className="relative z-10 flex items-center gap-3 group-hover:text-white transition-colors uppercase italic tracking-tighter">
+                    <span className="text-xl">▶</span> Play Lesson
+                  </span>
                 </button>
 
                 {(!currentUser || (currentUser.subscription !== 'premium' && currentUser.role !== 'admin')) && (
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      navigate('/profile');
-                    }}
-                    className="px-10 py-4 bg-red-600/20 border border-red-600/40 text-white font-black rounded-xl flex items-center gap-3 hover:bg-red-600 transition-all text-sm md:text-base backdrop-blur-md shadow-2xl active:scale-95"
+                    onClick={() => navigate('/profile')}
+                    className="px-10 py-4 bg-white/5 border border-white/10 text-white font-black rounded-2xl hover:bg-white/10 transition-all active:scale-95 backdrop-blur-xl uppercase italic tracking-tighter text-sm"
                   >
-                    <span>🛡️</span> SUBSCRIBE TO UNLOCK
+                    Unlock Full Access
                   </button>
                 )}
               </div>
@@ -190,67 +195,70 @@ export default function Home() {
 
           {/* Rolling Indicators */}
           {featured.length > 1 && (
-            <div className="absolute bottom-12 right-12 flex gap-2 z-20">
+            <div className="absolute bottom-16 left-6 md:left-20 flex gap-3 z-30">
               {featured.map((_, idx) => (
-                <div
+                <button
                   key={idx}
                   onClick={() => setActiveHeroIdx(idx)}
-                  className={`h-1 transition-all duration-500 cursor-pointer ${activeHeroIdx === idx ? 'w-8 bg-red-600' : 'w-4 bg-white/20 hover:bg-white/40'}`}
+                  className={`h-1.5 transition-all duration-700 rounded-full ${activeHeroIdx === idx ? 'w-12 bg-red-600 shadow-[0_0_15px_rgba(220,38,38,0.5)]' : 'w-4 bg-white/20 hover:bg-white/40'}`}
                 />
               ))}
             </div>
           )}
 
-          {/* Subtle Bottom Fade */}
-          <div className="absolute bottom-0 left-0 w-full h-32 bg-gradient-to-t from-[#020202] to-transparent"></div>
+          <div className="absolute bottom-0 left-0 w-full h-48 bg-gradient-to-t from-[#020202] to-transparent z-10"></div>
         </section>
       )}
 
-      <div className="relative z-10 pt-12 md:pt-4 px-4 md:px-12 pb-32">
-        {/* Professional Category Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-          {categories
-            .sort((a, b) => a.name === 'Big Data Free' ? -1 : b.name === 'Big Data Free' ? 1 : a.name.localeCompare(b.name))
-            .map(categoryObj => {
-              const category = categoryObj.name;
-              const allCategoryMovies = movies.filter(m => m.category?.includes(category));
-
-              return (
+      {/* Main Content Sections */}
+      <div className="relative z-10 px-6 md:px-20 pb-40 pt-2 space-y-32">
+        {/* Categories Section */}
+        <section className="space-y-12">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {categories
+              .sort((a, b) => a.name === 'Big Data Free' ? -1 : b.name === 'Big Data Free' ? 1 : a.name.localeCompare(b.name))
+              .map(cat => (
                 <div
-                  key={category}
-                  onClick={() => navigate(`/category/${encodeURIComponent(category)}`)}
-                  className="group relative bg-[#111] border border-white/5 rounded-[2.5rem] p-10 cursor-pointer overflow-hidden hover:bg-[#161616] hover:border-red-600/30 transition-all duration-500 hover:translate-y-[-8px] shadow-2xl"
+                  key={cat._id}
+                  onClick={() => navigate(`/category/${encodeURIComponent(cat.name)}`)}
+                  className="group relative h-80 bg-[#0a0a0a] rounded-[2.5rem] border border-white/5 overflow-hidden cursor-pointer transition-all duration-500 hover:border-red-600/30 hover:-translate-y-2 shadow-2xl"
                 >
-                  {/* Subtle Background Glow */}
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-red-600/5 blur-[60px] group-hover:bg-red-600/10 transition-colors"></div>
+                  {/* Category Image Overlay (Using first movie poster as bg) */}
+                  <div className="absolute inset-0 opacity-40 group-hover:opacity-100 transition-all duration-700">
+                    <img
+                      src={movies.find(m => m.category?.includes(cat.name))?.poster || '/placeholder.jpg'}
+                      className="w-full h-full object-cover transition-all duration-700 scale-110 group-hover:scale-100"
+                      alt=""
+                    />
+                  </div>
 
-                  <div className="relative z-10 space-y-6">
-                    <div className="flex items-start justify-between">
-                      <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-3xl group-hover:scale-110 group-hover:bg-red-600 transition-all duration-500">
-                        {category === 'Big Data Free' ? '🆓' : '🛡️'}
-                      </div>
-                      {category === 'Big Data Free' && (
-                        <span className="px-3 py-1 bg-green-500/10 text-green-500 border border-green-500/20 rounded-lg text-[8px] font-black uppercase tracking-widest">Unlocked</span>
+                  {/* Content Container */}
+                  <div className="absolute inset-0 p-10 flex flex-col justify-between bg-gradient-to-t from-black via-black/40 to-transparent">
+                    <div className="flex justify-end items-start text-right">
+                      {cat.name === 'Big Data Free' && (
+                        <span className="px-4 py-1.5 bg-green-500/10 text-green-500 border border-green-500/20 rounded-xl text-[10px] font-black uppercase tracking-widest">Open Sector</span>
                       )}
                     </div>
 
-                    <div className="space-y-2">
-                      <h2 className="text-2xl font-black text-white uppercase tracking-tighter leading-none italic group-hover:text-red-500 transition-colors">
-                        {category}
-                      </h2>
-                      <p className="text-[10px] text-red-600 group-hover:text-white font-black uppercase tracking-[0.2em] transition-colors duration-500">
-                        {allCategoryMovies.length} Videos Available
-                      </p>
-                    </div>
-
-                    <div className="flex items-center gap-2 text-[10px] font-black text-red-600 group-hover:text-green-500 uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all duration-500 translate-x-[-10px] group-hover:translate-x-0">
-                      Enter Sector <span>→</span>
+                    <div className="space-y-3">
+                      <h3 className="text-3xl font-black text-white uppercase italic tracking-tighter group-hover:text-red-500 transition-colors drop-shadow-2xl">
+                        {cat.name}
+                      </h3>
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest drop-shadow-md">
+                          {movies.filter(m => m.category?.includes(cat.name)).length} Lessons
+                        </span>
+                        <div className="w-8 h-8 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center group-hover:bg-white group-hover:text-black transition-all">
+                          →
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
-              );
-            })}
-        </div>
+              ))}
+          </div>
+        </section>
+
       </div>
     </main>
   );
