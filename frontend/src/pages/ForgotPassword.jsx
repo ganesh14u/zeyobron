@@ -48,11 +48,11 @@ export default function ForgotPassword() {
   }
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-[#080808] relative overflow-hidden font-sans">
+    <div className="min-h-screen w-full flex items-center justify-center bg-[#080808] relative overflow-hidden font-sans pt-24 pb-12">
       <div className="absolute top-[-20%] right-[-10%] w-[60%] h-[60%] bg-red-600/5 blur-[150px] rounded-full"></div>
 
-      <div className="relative z-10 w-full max-w-xl p-6 md:p-8 animate-in fade-in zoom-in duration-500">
-        <div className="bg-[#121212] border border-white/5 rounded-[2.5rem] p-8 md:p-14 shadow-2xl">
+      <div className="relative z-10 w-full max-w-xl p-6 animate-in fade-in zoom-in duration-500">
+        <div className="bg-[#121212] border border-white/5 rounded-[2.5rem] p-8 md:p-10 shadow-2xl">
           <div className="mb-10 text-center space-y-2">
             <h1 className="text-4xl md:text-5xl font-black text-white tracking-tighter uppercase italic">Reset Password</h1>
             <p className="text-gray-500 text-xs font-bold uppercase tracking-widest pt-2">Enter your email to receive recovery instructions</p>

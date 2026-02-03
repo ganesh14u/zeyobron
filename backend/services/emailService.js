@@ -59,6 +59,8 @@ export const sendPasswordResetEmail = async (email, resetToken, userName) => {
         const resetUrl = `${clientUrl}/reset-password/${resetToken}`;
         const fromEmail = process.env.EMAIL_FROM || 'paladugusaiganesh@gmail.com'; // Using validated sender
 
+        console.log(`🔗 Reset URL generated: ${resetUrl}`);
+
         const mailOptions = {
             from: `"Data Sai Support" <${fromEmail}>`,
             to: email,
@@ -147,11 +149,13 @@ export const sendPasswordResetEmail = async (email, resetToken, userName) => {
 
         const result = await transporter.sendMail(mailOptions);
 
-        console.log('Password reset email sent successfully to:', email);
+        console.log('✅ Password reset email sent successfully to:', email);
         return result;
     } catch (error) {
-        console.error('Error sending password reset email:', error);
-        throw new Error('Failed to send password reset email');
+        console.error('❌ Error sending password reset email:', error);
+        console.error('Environment check - EMAIL_USER exists:', !!process.env.EMAIL_USER);
+        console.error('Environment check - CLIENT_URL:', process.env.CLIENT_URL);
+        throw new Error('Failed to send password reset email: ' + error.message);
     }
 };
 
