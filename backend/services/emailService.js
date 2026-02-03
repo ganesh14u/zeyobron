@@ -18,23 +18,30 @@ const initTransporter = async () => {
 
     if (user && pass) {
         if (host) {
+            console.log(`📡 Connecting to SMTP: ${host}:${port} (Secure: ${port == 465})`);
             transporter = nodemailer.createTransport({
-                host,
-                port,
-                secure: port == 465,
-                auth: { user, pass },
-                pool: true, // Use pooling for better performance
-                maxConnections: 5,
+                host: host.trim(),
+                port: parseInt(port),
+                secure: port == 465, // true for 465, false for other ports
+                auth: { user: user.trim(), pass: pass.trim() },
+                connectionTimeout: 15000, // 15 seconds
+                greetingTimeout: 15000,
+                socketTimeout: 15000,
+                tls: {
+                    rejectUnauthorized: false // Helps with some cloud proxy issues
+                }
             });
         } else {
+            console.log(`📧 Using Gmail Service approach`);
             transporter = nodemailer.createTransport({
                 service: 'gmail',
-                auth: { user, pass }
+                auth: { user: user.trim(), pass: pass.trim() }
             });
         }
     } else {
         // Only create test account if we absolutely have to, and cache it
-        console.warn('⚠️ No email credentials found. Falling back to test service.');
+        console.error('❌ DISASTER: No email credentials found in process.env!');
+        console.error('⚠️ Falling back to Ethereal TEST service. EMAILS WILL NOT BE DELIVERED TO REAL INBOXES.');
         const testAccount = await nodemailer.createTestAccount();
         transporter = nodemailer.createTransport({
             host: "smtp.ethereal.email",

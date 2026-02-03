@@ -96,16 +96,20 @@ router.post('/forgot-password', async (req, res) => {
     // Send email with reset link
     try {
       await sendPasswordResetEmail(user.email, resetToken, user.name);
-      res.json({
-        message: 'Password reset link sent to your email',
-        // Don't send the actual URL in production for security
-      });
+      res.json({ message: 'Password reset link sent to your email' });
     } catch (emailError) {
-      // If email fails, still return success to prevent email enumeration
-      console.error('Email sending failed:', emailError);
-      res.json({
-        message: 'Password reset link sent to your email'
-      });
+      console.error('❌ CRITICAL EMAIL FAILURE:', emailError.message);
+
+      // If we're in development, show the real error. 
+      // In production, we still say "sent" for security, but we log the truth on the server.
+      if (process.env.NODE_ENV === 'development') {
+        return res.status(500).json({
+          message: 'Email failed: ' + emailError.message,
+          debug_hint: 'Check your Brevo credentials and Sender verification.'
+        });
+      }
+
+      res.json({ message: 'Password reset link sent to your email' });
     }
   } catch (error) {
     res.status(500).json({ message: error.message });
