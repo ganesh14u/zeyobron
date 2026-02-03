@@ -17,21 +17,33 @@ const initTransporter = async () => {
     console.log(`📧 Initializing Mailer: ${host}`);
 
     if (user && pass) {
-        const isSecure = port === 465;
-        console.log(`📡 Connecting to SMTP: ${host}:${port} (Secure: ${isSecure})`);
+        console.log(`� Attempting to connect via Brevo Service...`);
 
         transporter = nodemailer.createTransport({
-            host,
-            port,
-            secure: isSecure,
+            service: 'Brevo',
             auth: { user, pass },
-            connectionTimeout: 20000,
-            greetingTimeout: 20000,
-            socketTimeout: 20000,
             tls: {
                 rejectUnauthorized: false
             }
         });
+
+        // Test the connection immediately
+        try {
+            await transporter.verify();
+            console.log('✅ SMTP Connection Verified - Ready to send emails');
+        } catch (verifyError) {
+            console.error('❌ SMTP Verification Failed:', verifyError.message);
+            console.warn('⚠️ Manual Host Fallback initiated...');
+
+            // If service fails, try one last manual configuration on port 2525
+            transporter = nodemailer.createTransport({
+                host: 'smtp-relay.brevo.com',
+                port: 2525,
+                secure: false,
+                auth: { user, pass },
+                tls: { rejectUnauthorized: false }
+            });
+        }
     } else {
         console.error('❌ DISASTER: No email credentials found in process.env!');
         console.error('⚠️ Falling back to Ethereal TEST service. EMAILS WILL NOT BE DELIVERED TO REAL INBOXES.');
