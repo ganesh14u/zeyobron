@@ -420,24 +420,6 @@ export default function Admin() {
           ))}
         </nav>
 
-        <div className="p-4 border-t border-white/5">
-          <button
-            onClick={() => navigate('/')}
-            className={`w-full flex items-center gap-4 px-6 py-4 rounded-2xl transition-all font-black text-xs uppercase tracking-widest text-red-500 hover:bg-white/5 group relative`}
-          >
-            <div className="flex items-center justify-center min-w-[24px] text-xl">
-              <span>🚪</span>
-            </div>
-            {!sidebarCollapsed && <span className="animate-in fade-in slide-in-from-left-2 duration-300">Exit Admin</span>}
-
-            {sidebarCollapsed && (
-              <div className="absolute left-[calc(100%+20px)] px-4 py-2 bg-red-800 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-[100] shadow-xl text-[10px]">
-                Exit Admin
-                <div className="absolute top-1/2 -left-1 -translate-y-1/2 border-y-4 border-y-transparent border-r-4 border-r-red-800"></div>
-              </div>
-            )}
-          </button>
-        </div>
       </aside>
 
       {/* Mobile Navigation */}
