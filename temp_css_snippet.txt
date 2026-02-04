@@ -1,0 +1,23 @@
+/* Ticker/Marquee Animation */
+@keyframes ticker {
+  0% {
+    transform: translateX(100%);
+  }
+
+  100% {
+    transform: translateX(-100%);
+  }
+}
+
+.ticker-container {
+  overflow: hidden;
+  white-space: nowrap;
+  width: 100%;
+}
+
+.ticker-content {
+  display: inline-block;
+  white-space: nowrap;
+  animation: ticker 40s linear infinite;
+  padding-left: 20px;
+}

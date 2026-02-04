@@ -11,6 +11,7 @@ import ResetPassword from './pages/ResetPassword';
 import Profile from './pages/Profile';
 import Search from './pages/Search';
 import Navbar from './components/Navbar';
+import Support from './pages/Support';
 import Notification, { useNotification } from './components/Notification';
 import ConfirmDialog from './components/ConfirmDialog';
 import { API_URL } from './config';
@@ -194,6 +195,7 @@ export default function App() {
         <Route path="/category/:categoryName" element={<Category />} />
         <Route path="/movie/:id" element={<Movie />} />
         <Route path="/admin/*" element={<Admin />} />
+        <Route path="/support" element={<Support />} />
       </Routes>
     </div>
   );

@@ -345,6 +345,18 @@ export default function Navbar() {
                       <span className="text-sm font-medium text-gray-300 group-hover:text-white">Profile Settings</span>
                     </div>
                   </button>
+                  <button
+                    onClick={() => {
+                      setShowProfileMenu(false);
+                      navigate('/support');
+                    }}
+                    className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-white/5 transition-colors group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-lg">📧</span>
+                      <span className="text-sm font-medium text-gray-300 group-hover:text-white">Help & Support</span>
+                    </div>
+                  </button>
 
 
                   <div className="h-px bg-white/5 my-2"></div>
@@ -450,6 +462,7 @@ export default function Navbar() {
                 </div>
               </div>
               <button onClick={() => { navigate('/profile'); setShowProfileMenu(false); }} className="w-full text-left p-3 hover:bg-white/5 rounded-lg text-sm text-gray-300">Profile Settings</button>
+              <button onClick={() => { navigate('/support'); setShowProfileMenu(false); }} className="w-full text-left p-3 hover:bg-white/5 rounded-lg text-sm text-gray-300">Help & Support</button>
               <button onClick={() => { handleLogout(); setShowProfileMenu(false); }} className="w-full text-left p-3 hover:bg-red-500/10 rounded-lg text-sm text-red-500 font-bold">Sign Out</button>
             </div>
           ) : (

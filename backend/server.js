@@ -8,10 +8,20 @@ import movieRoutes from "./routes/movies.js";
 import adminRoutes from "./routes/admin.js";
 import categoryRoutes from "./routes/categories.js";
 import paymentRoutes from "./routes/payment.js";
+import supportRoutes from "./routes/support.js";
 
+
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 dotenv.config();
 const app = express();
+
+// ✅ Static folder for uploads
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // ✅ Compression middleware
 app.use(compression());
@@ -64,6 +74,7 @@ app.use("/api/movies", movieRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/payment", paymentRoutes);
+app.use("/api/support", supportRoutes);
 
 
 // ✅ 404 handler
