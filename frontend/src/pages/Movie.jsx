@@ -246,7 +246,6 @@ export default function Movie() {
                 <div className="text-lg text-gray-300 font-medium leading-relaxed italic whitespace-pre-wrap">
                   {movie.description.split('[PREMIUM_LINK_UNLOCKED_MARKER]').map((part, i, arr) => {
                     const urlRegex = /(https?:\/\/[^\s]+)/g;
-                    // Splitting with capturing group includes the matches in the array
                     const subParts = part.split(urlRegex);
 
                     return (

@@ -14,6 +14,7 @@ const userSchema = new mongoose.Schema({
   subscribedCategories: [{ type: String }],
   isActive: { type: Boolean, default: true },
   currentSessionId: String,
+  deviceName: String,
   lastActive: Date,
   resetPasswordToken: String,
   resetPasswordExpires: Date,

@@ -34,6 +34,7 @@ router.post('/signup', async (req, res) => {
 
   const sessionId = crypto.randomUUID();
   user.currentSessionId = sessionId;
+  user.deviceName = req.body.deviceName || 'Unknown Device';
   await user.save();
 
   const token = jwt.sign({ id: user._id, sessionId }, process.env.JWT_SECRET);
@@ -53,7 +54,7 @@ router.post('/signup', async (req, res) => {
 });
 
 router.post('/login', async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password, deviceName } = req.body;
   const user = await User.findOne({ email });
   if (!user) return res.status(400).json({ message: 'Invalid credentials' });
 
@@ -69,12 +70,15 @@ router.post('/login', async (req, res) => {
   const activityThreshold = 45 * 1000; // 45 seconds (Buffer for 15s heartbeat)
   if (user.currentSessionId && user.lastActive && (now - user.lastActive < activityThreshold)) {
     return res.status(403).json({
-      message: 'Active session found on another device. Please logout from your other device or wait 45 seconds and try again.'
+      type: 'SESSION_LOCK',
+      message: 'Active session found on another device.',
+      activeDevice: user.deviceName || 'Unknown Device'
     });
   }
 
   const sessionId = crypto.randomUUID();
   user.currentSessionId = sessionId;
+  user.deviceName = deviceName || 'Unknown Device';
   user.lastActive = now;
   await user.save();
 
@@ -92,6 +96,23 @@ router.post('/login', async (req, res) => {
       isActive: user.isActive
     }
   });
+});
+
+// Force logout existing session
+router.post('/force-logout', async (req, res) => {
+  const { email, password } = req.body;
+  const user = await User.findOne({ email });
+  if (!user) return res.status(400).json({ message: 'Invalid credentials' });
+
+  const ok = await bcrypt.compare(password, user.password);
+  if (!ok) return res.status(400).json({ message: 'Invalid credentials' });
+
+  user.currentSessionId = undefined;
+  user.deviceName = undefined;
+  user.lastActive = undefined;
+  await user.save();
+
+  res.json({ message: 'Previous session terminated. You can now login.' });
 });
 
 // Forgot Password - Generate reset token
@@ -241,6 +262,7 @@ router.post('/logout', protect, async (req, res) => {
     const user = await User.findById(req.user._id);
     if (user) {
       user.currentSessionId = undefined;
+      user.deviceName = undefined;
       user.lastActive = undefined;
       await user.save();
     }

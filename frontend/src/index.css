@@ -218,43 +218,559 @@ code {
   }
 }
 
-@keyframes slideInDown {
-  from {
-    transform: translateY(-10px);
+/* Uiverse Download Button Styles */
+.uiverse-download-button {
+  --primary: #ff5569;
+  --neutral-1: #1a1a1a;
+  --neutral-2: #0a0a0a;
+  --radius: 14px;
+
+  cursor: pointer;
+  border-radius: var(--radius);
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.3);
+  border: none;
+  box-shadow: 0 0.5px 0.5px 1px rgba(255, 255, 255, 0.05),
+    0 10px 20px rgba(0, 0, 0, 0.2), 0 4px 5px 0px rgba(0, 0, 0, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  transition: all 0.3s ease;
+  min-width: 220px;
+  padding: 20px;
+  height: 60px;
+  font-family: inherit;
+  font-style: italic;
+  font-size: 14px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: white;
+  background: transparent;
+  isolation: isolate;
+  margin-top: 1rem;
+}
+
+.uiverse-download-button:hover {
+  transform: scale(1.02);
+  box-shadow: 0 0 1px 2px rgba(255, 85, 105, 0.2),
+    0 15px 30px rgba(0, 0, 0, 0.3), 0 10px 3px -3px rgba(0, 0, 0, 0.04);
+}
+
+.uiverse-download-button:active {
+  transform: scale(1);
+}
+
+.uiverse-download-button:after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius);
+  border: 2.5px solid transparent;
+  background: linear-gradient(var(--neutral-1), var(--neutral-2)) padding-box,
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.1), rgba(0, 0, 0, 0.5)) border-box;
+  z-index: 0;
+  transition: all 0.4s ease;
+}
+
+.uiverse-download-button:hover::after {
+  border-color: rgba(255, 85, 105, 0.3);
+}
+
+.uiverse-download-button::before {
+  content: "";
+  inset: 1px;
+  position: absolute;
+  background: linear-gradient(to top, var(--neutral-1), var(--neutral-2));
+  border-radius: inherit;
+  z-index: 2;
+}
+
+.uiverse-download-state {
+  padding-left: 35px;
+  z-index: 3;
+  display: flex;
+  position: relative;
+  align-items: center;
+  justify-content: center;
+}
+
+.uiverse-download-state--default span {
+  display: block;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.uiverse-download-state .uiverse-download-icon {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  margin: auto;
+  transform: scale(1.25);
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.uiverse-download-state .uiverse-download-icon svg {
+  overflow: visible;
+}
+
+.uiverse-download-outline {
+  position: absolute;
+  border-radius: inherit;
+  overflow: hidden;
+  z-index: 1;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  inset: -2px -3.5px;
+}
+
+.uiverse-download-outline::before {
+  content: "";
+  position: absolute;
+  inset: -100%;
+  background: conic-gradient(from 180deg,
+      transparent 60%,
+      #ff5569 80%,
+      transparent 100%);
+  animation: uiverse-spin 2s linear infinite;
+  animation-play-state: paused;
+}
+
+@keyframes uiverse-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.uiverse-download-button:hover .uiverse-download-outline {
+  opacity: 1;
+}
+
+.uiverse-download-button:hover .uiverse-download-outline::before {
+  animation-play-state: running;
+}
+
+.uiverse-download-state p span {
+  display: block;
+  opacity: 0;
+  animation: uiverse-slideDown 0.8s ease forwards calc(var(--i) * 0.03s);
+}
+
+.uiverse-download-button:hover p span {
+  opacity: 1;
+  animation: uiverse-wave 0.5s ease forwards calc(var(--i) * 0.02s);
+}
+
+.uiverse-download-button:focus p span {
+  opacity: 1;
+  animation: uiverse-disapear 0.6s ease forwards calc(var(--i) * 0.03s);
+}
+
+@keyframes uiverse-wave {
+  30% {
+    opacity: 1;
+    transform: translateY(4px) translateX(0) rotate(0);
+  }
+
+  50% {
+    opacity: 1;
+    transform: translateY(-3px) translateX(0) rotate(0);
+    color: var(--primary);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) translateX(0) rotate(0);
+  }
+}
+
+@keyframes uiverse-slideDown {
+  0% {
     opacity: 0;
+    transform: translateY(-20px) translateX(5px) rotate(-90deg);
+    color: var(--primary);
+    filter: blur(5px);
+  }
+
+  30% {
+    opacity: 1;
+    transform: translateY(4px) translateX(0) rotate(0);
+    filter: blur(0);
+  }
+
+  50% {
+    opacity: 1;
+    transform: translateY(-3px) translateX(0) rotate(0);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) translateX(0) rotate(0);
+  }
+}
+
+@keyframes uiverse-disapear {
+  from {
+    opacity: 1;
   }
 
   to {
-    transform: translateY(0);
+    opacity: 0;
+    transform: translateX(5px) translateY(20px);
+    color: var(--primary);
+    filter: blur(5px);
+  }
+}
+
+.uiverse-download-state--default .uiverse-download-icon svg {
+  animation: uiverse-land 0.6s ease forwards;
+}
+
+.uiverse-download-button:hover .uiverse-download-state--default .uiverse-download-icon {
+  transform: rotate(45deg) scale(1.25);
+}
+
+.uiverse-download-button:focus .uiverse-download-state--default svg {
+  animation: uiverse-takeOff 0.8s linear forwards;
+}
+
+.uiverse-download-button:focus .uiverse-download-state--default .uiverse-download-icon {
+  transform: rotate(0) scale(1.25);
+}
+
+@keyframes uiverse-takeOff {
+  0% {
+    opacity: 1;
+  }
+
+  60% {
+    opacity: 1;
+    transform: translateX(70px) rotate(45deg) scale(2);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateX(160px) rotate(45deg) scale(0);
+  }
+}
+
+@keyframes uiverse-land {
+  0% {
+    transform: translateX(-60px) translateY(30px) rotate(-50deg) scale(2);
+    opacity: 0;
+    filter: blur(3px);
+  }
+
+  100% {
+    transform: translateX(0) translateY(0) rotate(0);
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
+.uiverse-download-state--default .uiverse-download-icon:before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  height: 2px;
+  width: 0;
+  left: -5px;
+  background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.2));
+}
+
+.uiverse-download-button:focus .uiverse-download-state--default .uiverse-download-icon:before {
+  animation: uiverse-contrail 0.8s linear forwards;
+}
+
+@keyframes uiverse-contrail {
+  0% {
+    width: 0;
+    opacity: 1;
+  }
+
+  8% {
+    width: 15px;
+  }
+
+  60% {
+    opacity: 0.7;
+    width: 80px;
+  }
+
+  100% {
+    opacity: 0;
+    width: 160px;
+  }
+}
+
+.uiverse-download-state--sent {
+  display: none;
+}
+
+.uiverse-download-state--sent svg {
+  transform: scale(1.25);
+  margin-right: 8px;
+}
+
+.uiverse-download-button:focus-within .uiverse-download-state--default {
+  display: none;
+}
+
+.uiverse-download-button:focus-within .uiverse-download-state--sent {
+  display: flex !important;
+}
+
+.uiverse-download-button:focus-within .uiverse-download-state--sent span {
+  opacity: 0;
+  animation: uiverse-slideDown 0.8s ease forwards calc(var(--i) * 0.2s);
+}
+
+.uiverse-download-button:focus-within .uiverse-download-state--sent .uiverse-download-icon svg {
+  opacity: 0;
+  animation: uiverse-appear 1.2s ease forwards 0.8s;
+}
+
+@keyframes uiverse-appear {
+  0% {
+    opacity: 0;
+    transform: scale(4) rotate(-40deg);
+    color: var(--primary);
+    filter: blur(4px);
+  }
+
+  30% {
+    opacity: 1;
+    transform: scale(0.6);
+    filter: blur(1px);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+    filter: blur(0);
+  }
+
+  100% {
     opacity: 1;
   }
 }
 
-@keyframes zoomIn {
-  from {
-    transform: scale(0.95);
-    opacity: 0;
-  }
-
-  to {
-    transform: scale(1);
-    opacity: 1;
-  }
+/* Uiverse Search Bar Styles */
+.uiverse-search-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
 }
 
-.animate-in {
-  animation-duration: 200ms;
-  animation-fill-mode: forwards;
+.uiverse-search-white,
+.uiverse-search-border,
+.uiverse-search-darkBorderBg,
+.uiverse-search-glow {
+  max-height: 50px;
+  /* Reduced for Navbar */
+  max-width: 100%;
+  height: 100%;
+  width: 100%;
+  position: absolute;
+  overflow: hidden;
+  z-index: -1;
+  border-radius: 12px;
+  filter: blur(3px);
 }
 
-.fade-in {
-  animation-name: fadeIn;
+.uiverse-search-input {
+  background-color: #010201;
+  border: none;
+  width: 100%;
+  height: 44px;
+  /* Scaled for Navbar */
+  border-radius: 10px;
+  color: #ffffff;
+  /* Pure white text */
+  padding-inline: 50px;
+  font-size: 14px;
+  font-weight: 500;
 }
 
-.slide-in-from-top-2 {
-  animation-name: slideInDown;
+.uiverse-search-input::placeholder {
+  color: #ffffff;
+  opacity: 0.9;
 }
 
-.zoom-in-95 {
-  animation-name: zoomIn;
+.uiverse-search-input:focus {
+  outline: none;
+}
+
+#uiverse-search-poda {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  position: relative;
+}
+
+.uiverse-search-white {
+  max-height: 46px;
+  border-radius: 10px;
+  filter: blur(2px);
+}
+
+.uiverse-search-white::before {
+  content: "";
+  z-index: -2;
+  text-align: center;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(83deg);
+  position: absolute;
+  width: 600px;
+  height: 600px;
+  background-repeat: no-repeat;
+  background-position: 0 0;
+  filter: brightness(1.4);
+  background-image: conic-gradient(rgba(0, 0, 0, 0) 0%,
+      #a099d8,
+      rgba(0, 0, 0, 0) 8%,
+      rgba(0, 0, 0, 0) 50%,
+      #dfa2da,
+      rgba(0, 0, 0, 0) 58%);
+  transition: all 2s;
+}
+
+.uiverse-search-border {
+  max-height: 42px;
+  border-radius: 11px;
+  filter: blur(0.5px);
+}
+
+.uiverse-search-border::before {
+  content: "";
+  z-index: -2;
+  text-align: center;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(70deg);
+  position: absolute;
+  width: 600px;
+  height: 600px;
+  filter: brightness(1.3);
+  background-repeat: no-repeat;
+  background-position: 0 0;
+  background-image: conic-gradient(#1c191c,
+      #402fb5 5%,
+      #1c191c 14%,
+      #1c191c 50%,
+      #cf30aa 60%,
+      #1c191c 64%);
+  transition: all 2s;
+}
+
+.uiverse-search-darkBorderBg {
+  max-height: 48px;
+}
+
+.uiverse-search-darkBorderBg::before {
+  content: "";
+  z-index: -2;
+  text-align: center;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(82deg);
+  position: absolute;
+  width: 600px;
+  height: 600px;
+  background-repeat: no-repeat;
+  background-position: 0 0;
+  background-image: conic-gradient(rgba(0, 0, 0, 0),
+      #18116a,
+      rgba(0, 0, 0, 0) 10%,
+      rgba(0, 0, 0, 0) 50%,
+      #6e1b60,
+      rgba(0, 0, 0, 0) 60%);
+  transition: all 2s;
+}
+
+#uiverse-search-poda:hover>.uiverse-search-darkBorderBg::before {
+  transform: translate(-50%, -50%) rotate(-98deg);
+}
+
+#uiverse-search-poda:hover>.uiverse-search-glow::before {
+  transform: translate(-50%, -50%) rotate(-120deg);
+}
+
+#uiverse-search-poda:hover>.uiverse-search-white::before {
+  transform: translate(-50%, -50%) rotate(-97deg);
+}
+
+#uiverse-search-poda:hover>.uiverse-search-border::before {
+  transform: translate(-50%, -50%) rotate(-110deg);
+}
+
+#uiverse-search-poda:focus-within>.uiverse-search-darkBorderBg::before {
+  transform: translate(-50%, -50%) rotate(442deg);
+  transition: all 4s;
+}
+
+#uiverse-search-poda:focus-within>.uiverse-search-glow::before {
+  transform: translate(-50%, -50%) rotate(420deg);
+  transition: all 4s;
+}
+
+#uiverse-search-poda:focus-within>.uiverse-search-white::before {
+  transform: translate(-50%, -50%) rotate(443deg);
+  transition: all 4s;
+}
+
+#uiverse-search-poda:focus-within>.uiverse-search-border::before {
+  transform: translate(-50%, -50%) rotate(430deg);
+  transition: all 4s;
+}
+
+.uiverse-search-glow {
+  overflow: hidden;
+  filter: blur(20px);
+  opacity: 0.4;
+  max-height: 80px;
+}
+
+.uiverse-search-glow:before {
+  content: "";
+  z-index: -2;
+  text-align: center;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(60deg);
+  position: absolute;
+  width: 999px;
+  height: 999px;
+  background-repeat: no-repeat;
+  background-position: 0 0;
+  background-image: conic-gradient(#000,
+      #402fb5 5%,
+      #000 38%,
+      #000 50%,
+      #cf30aa 60%,
+      #000 87%);
+  transition: all 2s;
+}
+
+#uiverse-search-main {
+  position: relative;
+  width: 100%;
+}
+
+#uiverse-search-icon {
+  position: absolute;
+  left: 15px;
+  top: 10px;
+  pointer-events: none;
 }

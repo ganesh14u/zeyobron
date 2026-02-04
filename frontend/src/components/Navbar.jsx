@@ -82,7 +82,7 @@ export default function Navbar() {
         const token = localStorage.getItem('token');
         const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
         const response = await axios.get(`${API_URL}/movies?q=${encodeURIComponent(searchQuery)}`, config);
-        setSearchResults(response.data.slice(0, 5));
+        setSearchResults(response.data); // Store all returned results
         setShowSearchResults(true);
       } catch (error) {
         console.error('Error searching movies:', error);
@@ -156,34 +156,51 @@ export default function Navbar() {
 
       {/* Center Section: Search Bar (Desktop) */}
       <div className="flex-1 max-w-xl mx-8 relative search-container hidden md:block">
-        <div className="relative group">
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onFocus={() => searchQuery.trim().length >= 1 && setShowSearchResults(true)}
-            placeholder="Search videos, categories, batches..."
-            className="w-full px-5 py-2.5 pl-12 bg-white/10 hover:bg-white/15 border border-white/10 rounded-xl focus:outline-none focus:border-red-600 focus:bg-white/20 transition-all placeholder:text-gray-500 text-sm"
-          />
-          <svg
-            className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-red-600 transition-colors"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-          {searchQuery && (
-            <button
-              onClick={() => {
-                setSearchQuery('');
-                setShowSearchResults(false);
-              }}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
-            >
-              ✕
-            </button>
-          )}
+        <div id="uiverse-search-poda">
+          <div className="uiverse-search-glow" />
+          <div className="uiverse-search-darkBorderBg" />
+          <div className="uiverse-search-darkBorderBg" />
+          <div className="uiverse-search-darkBorderBg" />
+          <div className="uiverse-search-white" />
+          <div className="uiverse-search-border" />
+          <div id="uiverse-search-main">
+            <input
+              placeholder="Search videos, categories, batches..."
+              type="text"
+              name="text"
+              className="uiverse-search-input"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onFocus={() => searchQuery.trim().length >= 1 && setShowSearchResults(true)}
+            />
+            <div id="uiverse-search-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width={22} viewBox="0 0 24 24" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" height={22} fill="none">
+                <circle stroke="url(#search)" r={8} cy={11} cx={11} />
+                <line stroke="url(#searchl)" y2="16.65" y1={22} x2="16.65" x1={22} />
+                <defs>
+                  <linearGradient gradientTransform="rotate(50)" id="search">
+                    <stop stopColor="#f8e7f8" offset="0%" />
+                    <stop stopColor="#b6a9b7" offset="50%" />
+                  </linearGradient>
+                  <linearGradient id="searchl">
+                    <stop stopColor="#b6a9b7" offset="0%" />
+                    <stop stopColor="#837484" offset="50%" />
+                  </linearGradient>
+                </defs>
+              </svg>
+            </div>
+            {searchQuery && (
+              <button
+                onClick={() => {
+                  setSearchQuery('');
+                  setShowSearchResults(false);
+                }}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors z-[5]"
+              >
+                ✕
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Search Results Dropdown (Desktop) */}
@@ -192,7 +209,7 @@ export default function Navbar() {
             <div className="px-4 py-2 text-[10px] uppercase tracking-widest text-gray-500 font-bold bg-white/5 border-b border-white/5">
               Suggestions
             </div>
-            {searchResults.map((movie) => (
+            {searchResults.slice(0, 5).map((movie) => (
               <button
                 key={movie._id}
                 onClick={() => handleSearchResultClick(movie._id)}
@@ -216,6 +233,21 @@ export default function Navbar() {
                 </div>
               </button>
             ))}
+
+            {/* View All Button */}
+            {searchResults.length > 5 && (
+              <button
+                onClick={() => {
+                  setShowSearchResults(false);
+                  navigate(`/search?q=${encodeURIComponent(searchQuery)}`);
+                }}
+                className="w-full py-4 bg-white/[0.03] hover:bg-white/[0.08] transition-all text-center border-t border-white/5 group"
+              >
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-red-500 group-hover:text-red-400">
+                  View All {searchResults.length} Matches →
+                </span>
+              </button>
+            )}
           </div>
         )}
       </div>

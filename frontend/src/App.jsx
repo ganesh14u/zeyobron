@@ -9,6 +9,7 @@ import Login from './pages/Login';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import Profile from './pages/Profile';
+import Search from './pages/Search';
 import Navbar from './components/Navbar';
 import Notification, { useNotification } from './components/Notification';
 import ConfirmDialog from './components/ConfirmDialog';
@@ -189,6 +190,7 @@ export default function App() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password/:token" element={<ResetPassword />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/search" element={<Search />} />
         <Route path="/category/:categoryName" element={<Category />} />
         <Route path="/movie/:id" element={<Movie />} />
         <Route path="/admin/*" element={<Admin />} />
