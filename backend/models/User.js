@@ -8,7 +8,7 @@ const userSchema = new mongoose.Schema({
   role: { type: String, enum: ['user', 'admin'], default: 'user' },
   subscription: {
     type: String,
-    enum: ['free', 'premium'],
+    enum: ['free', 'premium', 'gold'],
     default: 'free'
   },
   subscribedCategories: [{ type: String }],

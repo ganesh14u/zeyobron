@@ -301,9 +301,9 @@ router.delete('/user/:id', protect, adminOnly, async (req, res) => {
     const user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ message: 'User not found' });
 
-    // Prevent deleting admin@netflix.com
-    if (user.email === 'admin@netflix.com') {
-      return res.status(403).json({ message: 'Cannot delete the main admin account' });
+    // Prevent deleting ANY admin account
+    if (user.role === 'admin') {
+      return res.status(403).json({ message: 'Administrative accounts cannot be deleted for security reasons.' });
     }
 
     await User.findByIdAndDelete(req.params.id);
@@ -457,7 +457,8 @@ router.get('/settings', protect, async (req, res) => {
       settings = await Settings.create({
         premiumPrice: 20000,
         originalPrice: 25000,
-        discountLabel: '20% OFF'
+        discountLabel: '20% OFF',
+        goldCategoryPrice: 1000
       });
     }
     res.json(settings);

@@ -46,6 +46,17 @@ router.get('/', async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 });
+// @desc    Get all categories
+// @route   GET /api/movies/categories
+router.get('/categories', async (req, res) => {
+  try {
+    const Category = (await import('../models/Category.js')).default;
+    const categories = await Category.find({});
+    res.json(categories);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
 
 router.get('/:id', async (req, res) => {
   try {
@@ -180,5 +191,6 @@ router.put('/:id/duration', protect, async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 });
+
 
 export default router;

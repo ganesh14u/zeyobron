@@ -19,13 +19,30 @@ const razorpay = new Razorpay({
 // @access  Private
 router.post("/order", protect, async (req, res) => {
     try {
-        const settings = await Settings.findOne() || { premiumPrice: 20000 };
-        const price = settings.premiumPrice;
+        const { type, categories } = req.body;
+        const settings = await Settings.findOne() || { premiumPrice: 20000, goldCategoryPrice: 1000 };
+
+        let amount = settings.premiumPrice;
+        let notes = { type: 'premium' };
+
+        if (type === 'gold' && Array.isArray(categories)) {
+            const Category = (await import("../models/Category.js")).default;
+            const chosenCats = await Category.find({ name: { $in: categories } });
+
+            // Sum up specific prices from each category
+            amount = chosenCats.reduce((sum, cat) => sum + (cat.price || settings.goldCategoryPrice || 1000), 0);
+
+            notes = {
+                type: 'gold',
+                categories: categories.join(',')
+            };
+        }
 
         const options = {
-            amount: price * 100, // Amount in paise
+            amount: amount * 100, // Amount in paise
             currency: "INR",
             receipt: `receipt_${Date.now()}`,
+            notes: notes
         };
 
         const order = await razorpay.orders.create(options);
@@ -52,40 +69,55 @@ router.post("/verify", protect, async (req, res) => {
 
         if (razorpay_signature === expectedSign) {
             // Payment Successful - Upgrade User
-            const user = await User.findById(req.user._id);
-            user.subscription = 'premium';
+            // Fetch order from razorpay to get the chosen upgrade type/categories
+            const orderObj = await razorpay.orders.fetch(razorpay_order_id);
+            const { type, categories: catString } = orderObj.notes || {};
 
-            // Auto-grant access to all current modules
-            try {
-                const Category = (await import("../models/Category.js")).default;
-                const allCategories = await Category.find({});
-                const categoryNames = allCategories.map(c => c.name);
-                user.subscribedCategories = categoryNames;
-            } catch (catErr) {
-                console.error("Failed to fetch categories during upgrade:", catErr);
+            const user = await User.findById(req.user._id);
+
+            if (type === 'gold' && catString) {
+                const newCategories = catString.split(',');
+                // Add unique new categories to the user's list
+                const current = user.subscribedCategories || [];
+                user.subscribedCategories = [...new Set([...current, ...newCategories])];
+
+                // If user is free, upgrade them to 'gold' status
+                if (user.subscription === 'free') {
+                    user.subscription = 'gold';
+                }
+            } else {
+                // Default to Premium
+                user.subscription = 'premium';
+                // Auto-grant access to all current modules
+                try {
+                    const Category = (await import("../models/Category.js")).default;
+                    const allCategories = await Category.find({});
+                    const categoryNames = allCategories.map(c => c.name);
+                    user.subscribedCategories = categoryNames;
+                } catch (catErr) {
+                    console.error("Failed to fetch categories during upgrade:", catErr);
+                }
             }
 
             await user.save();
 
             // Log the payment
             try {
-                const settings = await Settings.findOne() || { premiumPrice: 20000 };
                 const Payment = (await import("../models/Payment.js")).default;
                 await Payment.create({
                     user: user._id,
                     orderId: razorpay_order_id,
                     paymentId: razorpay_payment_id,
-                    amount: settings.premiumPrice,
+                    amount: orderObj.amount / 100, // razorpay returns amount in paise
                     status: 'captured'
                 });
             } catch (payErr) {
                 console.error("Failed to log payment:", payErr);
-                // We don't fail the response if logging fails, as user is already upgraded
             }
 
             res.json({
                 success: true,
-                message: "Payment verified and account upgraded to Premium Elite!"
+                message: type === 'gold' ? "Payment verified! Your selected modules are now unlocked." : "Payment verified and account upgraded to Premium Elite!"
             });
         } else {
             res.status(400).json({ message: "Invalid payment signature" });

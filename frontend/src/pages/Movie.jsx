@@ -78,20 +78,35 @@ export default function Movie() {
 
           // DETERMINE ACCESS
           let hasAccessFlag = false;
+          const userPlan = userObj.subscription?.toLowerCase() || 'free';
+          const movieCategories = movieData.category || [];
+          const userCategories = userObj.subscribedCategories || [];
+
           if (isAdmin) {
             hasAccessFlag = true;
-            setAccessReason('Admin Access');
-          } else if (isPremiumUser) {
+            setAccessReason('Admin Master Access');
+          } else if (userPlan === 'premium') {
             hasAccessFlag = true;
-            setAccessReason('Premium Subscription');
-          } else {
-            // Free User
-            if (!isPremiumContent) {
+            setAccessReason('Premium Unlimited Access');
+          } else if (userPlan === 'gold') {
+            // Gold users only get access to specific modules assigned by admin
+            const hasCategoryMatch = movieCategories.some(cat => userCategories.includes(cat));
+            if (hasCategoryMatch) {
               hasAccessFlag = true;
-              setAccessReason('Free Content');
+              setAccessReason('Gold Module Access');
             } else {
               hasAccessFlag = false;
-              setAccessReason('Premium Content is Locked');
+              setAccessReason('Access restricted for this Gold account');
+            }
+          } else {
+            // Free User (Standard)
+            // If it's a categorized module, free users can't see it (User requirement)
+            if (isPremiumContent || movieCategories.length > 0) {
+              hasAccessFlag = false;
+              setAccessReason('Upgrade required to view this module');
+            } else {
+              hasAccessFlag = true;
+              setAccessReason('Public Content');
             }
           }
           setHasAccess(hasAccessFlag);

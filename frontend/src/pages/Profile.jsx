@@ -25,8 +25,12 @@ export default function Profile() {
   const [pricingSettings, setPricingSettings] = useState({
     premiumPrice: 20000,
     originalPrice: 25000,
-    discountLabel: '20% OFF'
+    discountLabel: '20% OFF',
+    goldCategoryPrice: 1000
   });
+  const [categories, setCategories] = useState([]);
+  const [showGoldModal, setShowGoldModal] = useState(false);
+  const [selectedGoldCategories, setSelectedGoldCategories] = useState([]);
 
   // Fetch fresh user data
   const fetchUserData = async () => {
@@ -55,13 +59,15 @@ export default function Profile() {
         });
       }
 
-      // Fetch Pricing Settings
+      // Fetch Pricing Settings & Categories
       try {
-        const settingsRes = await axios.get(`${API_URL}/admin/settings`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        const [settingsRes, catsRes] = await Promise.all([
+          axios.get(`${API_URL}/admin/settings`, { headers: { Authorization: `Bearer ${token}` } }),
+          axios.get(`${API_URL}/movies/categories`, { headers: { Authorization: `Bearer ${token}` } })
+        ]);
         setPricingSettings(settingsRes.data);
-      } catch (e) { console.error("Pricing settings fetch failed", e); }
+        setCategories(catsRes.data);
+      } catch (e) { console.error("Data fetch failed", e); }
 
       localStorage.setItem('user', JSON.stringify(userData));
       window.dispatchEvent(new Event('userDataUpdated'));
@@ -212,6 +218,76 @@ export default function Profile() {
     }
   };
 
+  const handleGoldRazorpayPayment = async () => {
+    if (selectedGoldCategories.length === 0) {
+      notify('Please select at least one module to unlock', 'warning');
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      // 1. Create order on backend with type 'gold' and selected categories
+      const orderRes = await axios.post(
+        `${API_URL}/payment/order`,
+        {
+          type: 'gold',
+          categories: selectedGoldCategories
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      const { id: order_id, amount, currency } = orderRes.data;
+
+      // 2. Open Razorpay Checkout
+      const options = {
+        key: RAZORPAY_KEY_ID || 'rzp_test_placeholder',
+        amount: amount,
+        currency: currency,
+        name: "Data Sai Gold Access",
+        description: `Unlocking ${selectedGoldCategories.length} Modules`,
+        order_id: order_id,
+        handler: async function (response) {
+          try {
+            const verifyRes = await axios.post(
+              `${API_URL}/payment/verify`,
+              {
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+              },
+              { headers: { Authorization: `Bearer ${token}` } }
+            );
+
+            if (verifyRes.data.success) {
+              notify(`Welcome to Gold Tier! ${selectedGoldCategories.length} modules unlocked.`, 'success');
+              setShowGoldModal(false);
+              setSelectedGoldCategories([]);
+              fetchUserData();
+            }
+          } catch (err) {
+            notify('Payment verification failed.', 'error');
+          }
+        },
+        prefill: {
+          name: user.name,
+          email: user.email,
+          contact: user.phone || '',
+        },
+        theme: {
+          color: "#eab308", // Yellow 500
+        }
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.open();
+
+    } catch (err) {
+      notify(err.response?.data?.message || 'Failed to initiate Gold upgrade.', 'error');
+    }
+  };
+
   if (loading) return <LoadingSpinner />;
   if (!user) return null;
 
@@ -258,21 +334,34 @@ export default function Profile() {
 
               <div className="flex flex-col gap-3 w-full">
                 {user.subscription === 'premium' ? (
-                  <div className="px-6 py-4 bg-yellow-500/10 border border-yellow-500/20 text-yellow-500 rounded-2xl text-center">
+                  <div className="px-6 py-4 bg-red-600/10 border border-red-600/20 text-red-500 rounded-2xl text-center">
                     <div className="text-xs font-black uppercase tracking-widest">Premium Plan</div>
-                    <div className="text-[10px] opacity-60 font-bold mt-1">Founding Member</div>
+                    <div className="text-[10px] opacity-60 font-bold mt-1">Founding Member Access</div>
                   </div>
                 ) : (
                   <div className="space-y-4 w-full">
-                    <div className="px-6 py-4 bg-white/5 border border-white/10 text-gray-400 rounded-2xl text-center">
-                      <div className="text-xs font-black uppercase tracking-widest">Free Plan</div>
-                      <div className="text-[10px] opacity-60 font-bold mt-1">Limited Access</div>
-                    </div>
+                    {user.subscription === 'gold' ? (
+                      <div className="px-6 py-4 bg-yellow-500/10 border border-yellow-500/20 text-yellow-500 rounded-2xl text-center shadow-lg shadow-yellow-900/5">
+                        <div className="text-xs font-black uppercase tracking-widest">Gold Access</div>
+                        <div className="text-[10px] opacity-60 font-bold mt-1">Selective Module Authorization</div>
+                      </div>
+                    ) : (
+                      <div className="px-6 py-4 bg-white/5 border border-white/10 text-gray-400 rounded-2xl text-center">
+                        <div className="text-xs font-black uppercase tracking-widest">Free Plan</div>
+                        <div className="text-[10px] opacity-60 font-bold mt-1">Limited Trial Access</div>
+                      </div>
+                    )}
                     <button
                       onClick={() => setShowPaymentModal(true)}
                       className="w-full py-4 bg-red-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-red-700 transition-all shadow-xl shadow-red-900/20 hover:scale-105 active:scale-95 animate-pulse"
                     >
                       🚀 Upgrade to Premium
+                    </button>
+                    <button
+                      onClick={() => { setSelectedGoldCategories([]); setShowGoldModal(true); }}
+                      className="w-full py-4 bg-yellow-500 text-black rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-yellow-600 transition-all shadow-xl shadow-yellow-900/20 hover:scale-105 active:scale-95"
+                    >
+                      🔑 {user.subscription === 'gold' ? 'Add More Modules' : 'Upgrade to Gold'}
                     </button>
                   </div>
                 )}
@@ -370,6 +459,125 @@ export default function Profile() {
                         {['GPay', 'PhonePe', 'Paytm', 'Visa', 'Mastercard'].map(app => (
                           <span key={app} className="text-[8px] font-black uppercase tracking-widest border border-white/20 px-3 py-1.5 rounded-lg">{app}</span>
                         ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Gold Upgrade Modal */}
+            {showGoldModal && (
+              <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/90 backdrop-blur-2xl">
+                <div className="fixed inset-0" onClick={() => setShowGoldModal(false)}></div>
+
+                <div className="relative z-10 w-full max-w-4xl max-h-[85vh] bg-[#0a0a0a] border border-white/10 rounded-[2.5rem] md:rounded-[3rem] overflow-hidden shadow-[0_0_80px_rgba(234,179,8,0.15)] animate-in zoom-in-95 duration-300 flex flex-col">
+                  <header className="p-8 md:p-12 border-b border-white/5 flex justify-between items-center bg-gradient-to-r from-yellow-500/5 to-transparent">
+                    <div>
+                      <h3 className="text-3xl md:text-4xl font-black uppercase tracking-tighter italic text-white leading-none">
+                        Gold <span className="text-yellow-500">Selective Access</span>
+                      </h3>
+                      <p className="text-gray-500 text-[10px] font-bold uppercase tracking-[0.2em] mt-3">Choose the modules you want to unlock</p>
+                    </div>
+                    <button
+                      onClick={() => setShowGoldModal(false)}
+                      className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center hover:bg-yellow-500 hover:text-black transition-all group border border-white/10"
+                    >
+                      <span className="group-hover:rotate-90 transition-transform font-bold text-xl">✕</span>
+                    </button>
+                  </header>
+
+                  <div className="flex flex-col lg:flex-row flex-1 overflow-hidden">
+                    {/* Left: Category Grid */}
+                    <div className="lg:w-3/5 p-8 md:p-12 overflow-y-auto custom-scrollbar">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {categories.map(cat => {
+                          const isOwned = user.subscribedCategories?.includes(cat.name);
+                          const isSelected = selectedGoldCategories.includes(cat.name);
+
+                          return (
+                            <button
+                              key={cat._id}
+                              disabled={isOwned}
+                              onClick={() => {
+                                if (isSelected) {
+                                  setSelectedGoldCategories(prev => prev.filter(c => c !== cat.name));
+                                } else {
+                                  setSelectedGoldCategories(prev => [...prev, cat.name]);
+                                }
+                              }}
+                              className={`p-6 rounded-3xl border text-left transition-all relative group flex flex-col justify-between h-32 ${isOwned
+                                ? 'bg-white/5 border-transparent opacity-40 cursor-not-allowed'
+                                : isSelected
+                                  ? 'bg-yellow-500/10 border-yellow-500 shadow-lg shadow-yellow-900/10'
+                                  : 'bg-white/[0.02] border-white/5 hover:border-yellow-500/50 hover:bg-white/[0.04]'
+                                }`}
+                            >
+                              <div className="flex justify-between items-start">
+                                <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-md ${isOwned ? 'bg-gray-500/20 text-gray-400' : isSelected ? 'bg-yellow-500 text-black' : 'bg-white/10 text-gray-500'}`}>
+                                  {isOwned ? '✓ Owned' : isSelected ? 'Selected' : 'Module'}
+                                </span>
+                                {!isOwned && <span className="text-[10px] font-black text-yellow-500 opacity-0 group-hover:opacity-100 transition-opacity">₹{cat.price || 1000}</span>}
+                              </div>
+                              <h4 className={`text-lg font-black uppercase tracking-tighter italic leading-tight ${isSelected ? 'text-white' : 'text-gray-400 group-hover:text-white'}`}>{cat.name}</h4>
+
+                              {isSelected && <div className="absolute top-2 right-2 w-2 h-2 bg-yellow-500 rounded-full animate-ping"></div>}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Right: Summary & Checkout */}
+                    <div className="lg:w-2/5 p-8 md:p-12 bg-[#0d0d0d] border-l border-white/5 flex flex-col overflow-hidden">
+                      <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar min-h-0 space-y-8">
+                        <div className="space-y-4">
+                          <h4 className="text-xs font-black text-gray-500 uppercase tracking-widest">Order Summary</h4>
+                          <div className="space-y-3">
+                            {selectedGoldCategories.length > 0 ? (
+                              categories.filter(c => selectedGoldCategories.includes(c.name)).map(cat => (
+                                <div key={cat._id} className="flex justify-between items-center group">
+                                  <span className="text-[11px] font-bold text-gray-400 uppercase group-hover:text-white transition-colors">{cat.name}</span>
+                                  <span className="text-[11px] font-black text-white italic">₹{cat.price || 1000}</span>
+                                </div>
+                              ))
+                            ) : (
+                              <p className="text-[10px] text-gray-600 font-bold uppercase italic py-4">No modules selected...</p>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="space-y-4 pt-6 border-t border-white/5">
+                          <div className="flex justify-between items-center">
+                            <span className="text-xs font-bold text-gray-500 uppercase">Subtotal</span>
+                            <span className="text-sm font-black text-white italic">₹{categories.filter(c => selectedGoldCategories.includes(c.name)).reduce((sum, c) => sum + (c.price || 1000), 0)}</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-xs font-bold text-gray-500 uppercase">Module Discount</span>
+                            <span className="text-sm font-black text-green-500 italic uppercase">Applied</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-6 pt-8 mt-6 border-t border-white/10">
+                        <div className="flex justify-between items-center">
+                          <span className="text-lg font-black text-white uppercase tracking-tighter">Total Amount</span>
+                          <span className="text-3xl font-black text-yellow-500 italic tracking-tighter">₹{categories.filter(c => selectedGoldCategories.includes(c.name)).reduce((sum, c) => sum + (c.price || 1000), 0)}</span>
+                        </div>
+
+                        <div className="space-y-4">
+                          <button
+                            disabled={selectedGoldCategories.length === 0}
+                            onClick={handleGoldRazorpayPayment}
+                            className="w-full py-6 bg-yellow-500 hover:bg-yellow-400 disabled:bg-gray-800 disabled:text-gray-600 text-black font-black uppercase text-xs tracking-widest rounded-3xl transition-all shadow-[0_20px_40px_rgba(234,179,8,0.1)] hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-3 group"
+                          >
+                            Checkout Now
+                            <span className="group-hover:translate-x-1 transition-transform">→</span>
+                          </button>
+                          <p className="text-[9px] text-gray-600 font-bold uppercase tracking-widest leading-loose text-center">
+                            Unlocked instantly upon success.
+                          </p>
+                        </div>
                       </div>
                     </div>
                   </div>

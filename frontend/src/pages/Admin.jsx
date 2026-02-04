@@ -26,7 +26,7 @@ export default function Admin() {
     title: '', description: '', poster: '', videoUrl: '', videoType: 'youtube',
     category: [], batchNo: '', featured: false, isPremium: false
   });
-  const [categoryForm, setCategoryForm] = useState({ name: '', description: '', isPremium: false });
+  const [categoryForm, setCategoryForm] = useState({ name: '', description: '', isPremium: false, price: 1000 });
   const [userSubForm, setUserSubForm] = useState({ subscription: 'free', subscribedCategories: [] });
   const [editingId, setEditingId] = useState(null);
   const [userSearchQuery, setUserSearchQuery] = useState('');
@@ -163,6 +163,18 @@ export default function Admin() {
         }, getAuthHeaders());
 
         notify(`User ${user.isActive ? 'blocked' : 'unblocked'} successfully`, 'success');
+        fetchData();
+      }
+    } catch (err) {
+      notify(err.response?.data?.message || err.message, 'error');
+    }
+  };
+
+  const handleDeleteUser = async (user) => {
+    try {
+      if (await confirm(`CRITICAL: Are you sure you want to PERMANENTLY delete user: ${user.name}? This action cannot be undone.`)) {
+        await axios.delete(`${API_URL}/admin/user/${user._id}`, getAuthHeaders());
+        notify('User account deleted permanently', 'success');
         fetchData();
       }
     } catch (err) {
@@ -630,9 +642,14 @@ export default function Admin() {
                         </td>
                         <td className="p-12">
                           <div className="flex flex-col gap-2">
-                            <span className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-3 w-fit ${u.subscription === 'premium' ? 'bg-yellow-500/10 text-yellow-500 border border-yellow-500/20' : 'bg-gray-800/10 text-gray-600 border border-white/5'}`}>
-                              {u.subscription === 'premium' && <span className="w-1.5 h-1.5 bg-yellow-500 rounded-full animate-pulse"></span>}
-                              {u.subscription === 'premium' ? 'Premium Access' : 'Free Plan'}
+                            <span className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-3 w-fit ${u.subscription === 'premium'
+                              ? 'bg-red-600/10 text-red-500 border border-red-600/20'
+                              : u.subscription === 'gold'
+                                ? 'bg-yellow-500/10 text-yellow-500 border border-yellow-500/20'
+                                : 'bg-gray-800/10 text-gray-500 border border-white/5'
+                              }`}>
+                              {u.subscription !== 'free' && <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${u.subscription === 'premium' ? 'bg-red-500' : 'bg-yellow-500'}`}></span>}
+                              {u.subscription === 'premium' ? 'Premium Access' : u.subscription === 'gold' ? 'Gold Access' : 'Free Plan'}
                             </span>
                             {!u.isActive && (
                               <span className="px-5 py-1.5 bg-red-600/20 text-red-500 border border-red-600/30 rounded-lg text-[8px] font-black uppercase tracking-[0.2em] w-fit">
@@ -645,30 +662,45 @@ export default function Admin() {
                           <div className="flex flex-wrap gap-1.5 max-w-[300px]">
                             {u.subscription === 'free' ? (
                               <span className="text-[10px] font-bold text-gray-800 italic uppercase tracking-widest">No Category Access</span>
-                            ) : u.subscription === 'premium' && u.subscribedCategories?.length >= categories.length ? (
-                              <span className="px-3 py-1 bg-yellow-500/10 text-yellow-500 text-[9px] font-black rounded-lg border border-yellow-500/20 uppercase tracking-tighter">✨ All Modules Access</span>
+                            ) : u.subscription === 'premium' ? (
+                              <span className="px-3 py-1 bg-red-600/10 text-red-500 text-[9px] font-black rounded-lg border border-red-600/20 uppercase tracking-tighter">✨ Platform-Wide Access</span>
                             ) : (
                               u.subscribedCategories?.length > 0 ?
                                 u.subscribedCategories.map(c => (
-                                  <span key={c} className="px-3 py-1 bg-green-500/5 text-green-500 text-[9px] font-black rounded-lg border border-green-500/20 uppercase tracking-tighter">{c}</span>
-                                )) : <span className="text-[10px] font-bold text-gray-800 italic uppercase tracking-widest">No Category Access</span>
+                                  <span key={c} className="px-3 py-1 bg-yellow-500/5 text-yellow-500 text-[9px] font-black rounded-lg border border-yellow-500/20 uppercase tracking-tighter">{c}</span>
+                                )) : <span className="text-[10px] font-bold text-red-700 italic uppercase tracking-widest">Module Selection Required</span>
                             )}
                           </div>
                         </td>
                         <td className="p-12 text-right">
-                          <div className="flex justify-end gap-3">
-                            <button
-                              onClick={() => { setSelectedUser(u); setUserSubForm({ subscription: u.subscription, subscribedCategories: u.subscribedCategories || [] }) }}
-                              className="px-6 py-4 bg-white text-black text-[10px] font-black rounded-2xl hover:bg-white/90 active:scale-95 transition-all shadow-xl uppercase tracking-widest"
-                            >
-                              Edit Access
-                            </button>
-                            <button
-                              onClick={() => handleToggleUserStatus(u)}
-                              className={`px-6 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 flex items-center gap-2 ${u.isActive ? 'bg-red-600/10 text-red-500 border border-red-600/20 hover:bg-red-600 hover:text-white' : 'bg-green-600/10 text-green-500 border border-green-600/20 hover:bg-green-600 hover:text-white'}`}
-                            >
-                              {u.isActive ? '🚫 Block' : '✅ Unblock'}
-                            </button>
+                          <div className="flex justify-end items-center gap-3">
+                            {u.role !== 'admin' ? (
+                              <>
+                                <button
+                                  onClick={() => { setSelectedUser(u); setUserSubForm({ subscription: u.subscription, subscribedCategories: u.subscribedCategories || [] }) }}
+                                  className="px-6 py-4 bg-white text-black text-[10px] font-black rounded-2xl hover:bg-white/90 active:scale-95 transition-all shadow-lg uppercase tracking-widest"
+                                >
+                                  Edit Access
+                                </button>
+                                <button
+                                  onClick={() => handleToggleUserStatus(u)}
+                                  className={`px-6 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 flex items-center gap-2 ${u.isActive ? 'bg-red-600/10 text-red-500 border border-red-600/20 hover:bg-red-600 hover:text-white' : 'bg-green-600/10 text-green-500 border border-green-600/20 hover:bg-green-600 hover:text-white'}`}
+                                >
+                                  {u.isActive ? '🚫 Block' : '✅ Unblock'}
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteUser(u)}
+                                  className="w-12 h-12 flex items-center justify-center bg-white/5 border border-white/10 rounded-2xl hover:bg-red-600 hover:border-red-600 transition-all text-xs shadow-lg font-bold"
+                                  title="Permanently Delete User"
+                                >
+                                  🗑️
+                                </button>
+                              </>
+                            ) : (
+                              <span className="px-5 py-2.5 bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 rounded-xl text-[10px] font-black uppercase tracking-widest italic select-none">
+                                SYSTEM ADMIN
+                              </span>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -685,10 +717,16 @@ export default function Admin() {
             <div className="bg-[#161616] p-12 rounded-[3.5rem] border border-white/5 max-w-2xl shadow-2xl relative overflow-hidden">
               <div className="absolute top-0 left-0 w-32 h-32 bg-red-600/5 blur-[50px]"></div>
               <h3 className="text-2xl font-black uppercase mb-10 italic tracking-tighter">Create New Category</h3>
-              <form onSubmit={async (e) => { e.preventDefault(); await axios.post(`${API_URL}/admin/category`, categoryForm, getAuthHeaders()); setCategoryForm({ name: '', description: '', isPremium: false }); fetchData(); notify('Category Created Successfully', 'success'); }} className="space-y-8">
-                <div className="space-y-3">
-                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-4">Category Name</label>
-                  <input type="text" placeholder="e.g. Big Data" value={categoryForm.name} onChange={e => setCategoryForm({ ...categoryForm, name: e.target.value })} className="px-8 py-5 bg-black/40 border border-white/10 rounded-2xl w-full font-black uppercase text-sm focus:border-red-600 outline-none transition-all" required />
+              <form onSubmit={async (e) => { e.preventDefault(); await axios.post(`${API_URL}/admin/category`, categoryForm, getAuthHeaders()); setCategoryForm({ name: '', description: '', isPremium: false, price: 1000 }); fetchData(); notify('Category Created Successfully', 'success'); }} className="space-y-8">
+                <div className="grid grid-cols-2 gap-8">
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-4">Category Name</label>
+                    <input type="text" placeholder="e.g. Big Data" value={categoryForm.name} onChange={e => setCategoryForm({ ...categoryForm, name: e.target.value })} className="px-8 py-5 bg-black/40 border border-white/10 rounded-2xl w-full font-black uppercase text-sm focus:border-red-600 outline-none transition-all" required />
+                  </div>
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-4">Gold Price (INR)</label>
+                    <input type="number" placeholder="1000" value={categoryForm.price} onChange={e => setCategoryForm({ ...categoryForm, price: Number(e.target.value) })} className="px-8 py-5 bg-black/40 border border-white/10 rounded-2xl w-full font-black text-sm focus:border-red-600 outline-none transition-all" required />
+                  </div>
                 </div>
                 <div className="space-y-3">
                   <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-4">Description</label>
@@ -702,156 +740,213 @@ export default function Admin() {
               {categories.map(c => (
                 <div key={c._id} className="bg-[#161616] p-10 rounded-[3rem] border border-white/5 relative group hover:border-red-600/30 transition-all shadow-2xl">
                   <div className="w-16 h-16 rounded-3xl bg-white/5 flex items-center justify-center text-3xl mb-8 group-hover:scale-110 transition-transform">📂</div>
-                  <h4 className="font-black uppercase text-white mb-3 text-lg tracking-tighter italic">{c.name}</h4>
-                  <p className="text-[11px] font-bold text-gray-600 uppercase mb-10 line-clamp-3 leading-relaxed">{c.description || 'No description provided.'}</p>
+                  <h4 className="font-black uppercase text-white mb-2 text-lg tracking-tighter italic">{c.name}</h4>
+
+                  <div className="flex items-center gap-3 mb-8 bg-black/20 p-3 rounded-2xl border border-white/5 group-hover:border-red-600/20 transition-all">
+                    <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Price:</span>
+                    <div className="relative flex-1">
+                      <span className="absolute left-0 top-1/2 -translate-y-1/2 text-white/50 text-xs font-bold pl-1">₹</span>
+                      <input
+                        type="number"
+                        defaultValue={c.price}
+                        onBlur={async (e) => {
+                          const newPrice = Number(e.target.value);
+                          if (newPrice !== c.price) {
+                            await axios.put(`${API_URL}/admin/category/${c._id}`, { price: newPrice }, getAuthHeaders());
+                            notify('Category Price Updated', 'success');
+                            fetchData();
+                          }
+                        }}
+                        className="bg-transparent border-none text-white text-sm font-black w-full pl-4 focus:ring-0 outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <p className="text-[11px] font-bold text-gray-600 uppercase mb-10 line-clamp-2 leading-relaxed h-10">{c.description || 'No description provided.'}</p>
                   <button onClick={async () => { if (await confirm(`Are you sure you want to delete category: "${c.name}"?`)) { await axios.delete(`${API_URL}/admin/category/${c._id}`, getAuthHeaders()); fetchData(); } }} className="w-full py-4 bg-red-600/10 text-red-500 rounded-2xl text-[10px] font-black uppercase hover:bg-red-600 hover:text-white transition-all border border-red-600/20 shadow-lg">Delete Category</button>
                 </div>
               ))}
             </div>
           </div>
-        )}
+        )
+        }
 
 
-        {activeTab === 'pricing' && (
-          <div className="max-w-4xl mx-auto space-y-12 animate-in fade-in duration-500">
-            <div className="bg-[#161616] p-12 rounded-[3.5rem] border border-white/5 shadow-2xl space-y-12">
-              <div className="space-y-4">
-                <h2 className="text-3xl font-black uppercase italic tracking-tighter text-white flex items-center gap-4">
-                  <span className="text-red-600">💰</span> Pricing Settings
-                </h2>
-                <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest leading-loose max-w-lg">
-                  Manage your platform's subscription pricing and discount labels. Changes are reflected instantly in the user upgrade portal.
-                </p>
-              </div>
-
-              <form onSubmit={handleUpdateSettings} className="space-y-10">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                  <div className="space-y-4">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-6">Premium Price (INR)</label>
-                    <input
-                      type="number"
-                      value={platformSettings.premiumPrice}
-                      onChange={e => setPlatformSettings({ ...platformSettings, premiumPrice: Number(e.target.value) })}
-                      className="w-full px-10 py-6 bg-black/40 border border-white/10 rounded-[2rem] font-bold text-lg focus:border-red-600 outline-none transition-all text-white"
-                      placeholder="e.g. 20000"
-                      required
-                    />
-                    <p className="text-[9px] text-gray-600 font-bold uppercase tracking-widest ml-6">The actual amount charged to the user.</p>
-                  </div>
-
-                  <div className="space-y-4">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-6">Original Price (Strike-through)</label>
-                    <input
-                      type="number"
-                      value={platformSettings.originalPrice}
-                      onChange={e => setPlatformSettings({ ...platformSettings, originalPrice: Number(e.target.value) })}
-                      className="w-full px-10 py-6 bg-black/40 border border-white/10 rounded-[2rem] font-bold text-lg focus:border-red-600 outline-none transition-all text-white"
-                      placeholder="e.g. 25000"
-                      required
-                    />
-                    <p className="text-[9px] text-gray-600 font-bold uppercase tracking-widest ml-6">Shown as the crossed-out price to highlight savings.</p>
-                  </div>
-
-                  <div className="md:col-span-2 space-y-4">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-6">Discount Label</label>
-                    <input
-                      type="text"
-                      value={platformSettings.discountLabel}
-                      onChange={e => setPlatformSettings({ ...platformSettings, discountLabel: e.target.value })}
-                      className="w-full px-10 py-6 bg-black/40 border border-white/10 rounded-[2rem] font-bold text-lg focus:border-red-600 outline-none transition-all text-white"
-                      placeholder="e.g. 20% OFF or LIMITED OFFER"
-                      required
-                    />
-                    <p className="text-[9px] text-gray-600 font-bold uppercase tracking-widest ml-6">Visual badge shown next to the price.</p>
-                  </div>
+        {
+          activeTab === 'pricing' && (
+            <div className="max-w-4xl mx-auto space-y-12 animate-in fade-in duration-500">
+              <div className="bg-[#161616] p-12 rounded-[3.5rem] border border-white/5 shadow-2xl space-y-12">
+                <div className="space-y-4">
+                  <h2 className="text-3xl font-black uppercase italic tracking-tighter text-white flex items-center gap-4">
+                    <span className="text-red-600">💰</span> Pricing Settings
+                  </h2>
+                  <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest leading-loose max-w-lg">
+                    Manage your platform's subscription pricing and discount labels. Changes are reflected instantly in the user upgrade portal.
+                  </p>
                 </div>
 
-                <div className="pt-6">
-                  <button type="submit" className="w-full py-7 bg-red-600 text-white font-black uppercase rounded-[2.5rem] shadow-2xl hover:bg-red-700 transition-all tracking-widest text-xs flex items-center justify-center gap-3">
-                    <span>💾</span> Update Pricing Platform
-                  </button>
-                </div>
-              </form>
-            </div>
+                <form onSubmit={handleUpdateSettings} className="space-y-10">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                    <div className="space-y-4">
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-6">Premium Price (INR)</label>
+                      <input
+                        type="number"
+                        value={platformSettings.premiumPrice}
+                        onChange={e => setPlatformSettings({ ...platformSettings, premiumPrice: Number(e.target.value) })}
+                        className="w-full px-10 py-6 bg-black/40 border border-white/10 rounded-[2rem] font-bold text-lg focus:border-red-600 outline-none transition-all text-white"
+                        placeholder="e.g. 20000"
+                        required
+                      />
+                      <p className="text-[9px] text-gray-600 font-bold uppercase tracking-widest ml-6">The actual amount charged to the user.</p>
+                    </div>
 
-            <div className="bg-emerald-500/5 border border-emerald-500/10 p-10 rounded-[2.5rem] flex items-center gap-8">
-              <div className="text-4xl">💎</div>
-              <div>
-                <h4 className="text-emerald-500 font-black uppercase tracking-widest text-xs mb-2">Live Preview Logic</h4>
-                <p className="text-gray-400 text-[10px] font-medium leading-relaxed uppercase tracking-wider">
-                  Users will see: <span className="text-white line-through opacity-50">₹{(platformSettings.originalPrice || 0).toLocaleString()}</span> <span className="text-white">₹{(platformSettings.premiumPrice || 0).toLocaleString()}</span> <span className="px-2 py-1 bg-red-600/20 text-red-500 rounded text-[8px] ml-2">{platformSettings.discountLabel}</span>
-                </p>
+                    <div className="space-y-4">
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-6">Original Price (Strike-through)</label>
+                      <input
+                        type="number"
+                        value={platformSettings.originalPrice}
+                        onChange={e => setPlatformSettings({ ...platformSettings, originalPrice: Number(e.target.value) })}
+                        className="w-full px-10 py-6 bg-black/40 border border-white/10 rounded-[2rem] font-bold text-lg focus:border-red-600 outline-none transition-all text-white"
+                        placeholder="e.g. 25000"
+                        required
+                      />
+                      <p className="text-[9px] text-gray-600 font-bold uppercase tracking-widest ml-6">Shown as the crossed-out price to highlight savings.</p>
+                    </div>
+
+                    <div className="space-y-4">
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-6">Gold Category Price (INR/Unit)</label>
+                      <input
+                        type="number"
+                        value={platformSettings.goldCategoryPrice}
+                        onChange={e => setPlatformSettings({ ...platformSettings, goldCategoryPrice: Number(e.target.value) })}
+                        className="w-full px-10 py-6 bg-black/40 border border-white/10 rounded-[2rem] font-bold text-lg focus:border-red-600 outline-none transition-all text-white"
+                        placeholder="e.g. 1000"
+                        required
+                      />
+                      <p className="text-[9px] text-gray-600 font-bold uppercase tracking-widest ml-6">Price per category for Gold tier upgrades.</p>
+                    </div>
+
+                    <div className="space-y-4">
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-6">Discount Label</label>
+                      <input
+                        type="text"
+                        value={platformSettings.discountLabel}
+                        onChange={e => setPlatformSettings({ ...platformSettings, discountLabel: e.target.value })}
+                        className="w-full px-10 py-6 bg-black/40 border border-white/10 rounded-[2rem] font-bold text-lg focus:border-red-600 outline-none transition-all text-white"
+                        placeholder="e.g. 20% OFF or LIMITED OFFER"
+                        required
+                      />
+                      <p className="text-[9px] text-gray-600 font-bold uppercase tracking-widest ml-6">Visual badge shown next to the price.</p>
+                    </div>
+                  </div>
+
+                  <div className="pt-6">
+                    <button type="submit" className="w-full py-7 bg-red-600 text-white font-black uppercase rounded-[2.5rem] shadow-2xl hover:bg-red-700 transition-all tracking-widest text-xs flex items-center justify-center gap-3">
+                      <span>💾</span> Update Pricing Platform
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              <div className="bg-emerald-500/5 border border-emerald-500/10 p-10 rounded-[2.5rem] flex items-center gap-8">
+                <div className="text-4xl">💎</div>
+                <div>
+                  <h4 className="text-emerald-500 font-black uppercase tracking-widest text-xs mb-2">Live Preview Logic</h4>
+                  <p className="text-gray-400 text-[10px] font-medium leading-relaxed uppercase tracking-wider">
+                    Users will see: <span className="text-white line-through opacity-50">₹{(platformSettings.originalPrice || 0).toLocaleString()}</span> <span className="text-white">₹{(platformSettings.premiumPrice || 0).toLocaleString()}</span> <span className="px-2 py-1 bg-red-600/20 text-red-500 rounded text-[8px] ml-2">{platformSettings.discountLabel}</span>
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
-        )}
-      </main>
+          )
+        }
+      </main >
 
       {/* Access Control Overlay */}
-      {selectedUser && (
-        <div className="fixed inset-0 bg-black/95 backdrop-blur-3xl flex items-center justify-center z-[100] p-6 animate-in fade-in zoom-in duration-300" onClick={() => setSelectedUser(null)}>
-          <div className="bg-[#111] rounded-[4rem] p-16 max-w-2xl w-full border border-white/5 shadow-[0_0_150px_rgba(0,0,0,1)] relative overflow-hidden" onClick={e => e.stopPropagation()}>
-            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-red-600 to-transparent"></div>
-            <div className="mb-14 text-center">
-              <h3 className="text-4xl font-black uppercase italic tracking-tighter mb-4">User Permissions</h3>
-              <p className="text-[11px] font-black text-gray-600 uppercase tracking-[0.2em]">Adjusting settings for: {selectedUser.email}</p>
-            </div>
-
-            <div className="space-y-10">
-              <div className="space-y-4">
-                <label className="text-[11px] font-black text-gray-500 uppercase tracking-widest ml-6">Subscription Plan</label>
-                <div className="grid grid-cols-2 gap-4">
-                  {['free', 'premium'].map(grade => (
-                    <button
-                      key={grade}
-                      onClick={() => {
-                        const allCategoryNames = categories.map(c => c.name);
-                        setUserSubForm({
-                          subscription: grade,
-                          subscribedCategories: grade === 'premium' ? allCategoryNames : []
-                        });
-                      }}
-                      className={`py-6 rounded-3xl font-black uppercase text-xs tracking-widest transition-all ${userSubForm.subscription === grade ? 'bg-red-600 text-white shadow-xl shadow-red-900/40 border-transparent' : 'bg-white/5 text-gray-600 border border-white/5 hover:text-white'}`}
-                    >
-                      {grade === 'free' ? 'Free Plan' : 'Premium Access'}
-                    </button>
-                  ))}
-                </div>
-                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest text-center mt-4">
-                  {userSubForm.subscription === 'premium'
-                    ? '✨ Premium users get access to ALL current and future modules.'
-                    : '🔒 Free users have no access to paid modules.'}
-                </p>
+      {
+        selectedUser && (
+          <div className="fixed inset-0 bg-black/95 backdrop-blur-3xl flex items-center justify-center z-[100] p-6 animate-in fade-in zoom-in duration-300" onClick={() => setSelectedUser(null)}>
+            <div className="bg-[#111] rounded-[4rem] p-16 max-w-2xl w-full border border-white/5 shadow-[0_0_150px_rgba(0,0,0,1)] relative overflow-hidden" onClick={e => e.stopPropagation()}>
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-red-600 to-transparent"></div>
+              <div className="mb-14 text-center">
+                <h3 className="text-4xl font-black uppercase italic tracking-tighter mb-4">User Permissions</h3>
+                <p className="text-[11px] font-black text-gray-600 uppercase tracking-[0.2em]">Adjusting settings for: {selectedUser.email}</p>
               </div>
 
-              {userSubForm.subscription === 'free' && (
+              <div className="space-y-10">
                 <div className="space-y-4">
-                  <label className="text-[11px] font-black text-gray-500 uppercase tracking-widest ml-6">Grant Access To Specific Modules</label>
-                  <div className="flex flex-wrap gap-2 p-6 bg-black/40 rounded-3xl border border-white/5 max-h-[300px] overflow-y-auto custom-scrollbar">
-                    {categories.map(cat => (
+                  <label className="text-[11px] font-black text-gray-500 uppercase tracking-widest ml-6">Subscription Plan</label>
+                  <div className="grid grid-cols-3 gap-4">
+                    {[
+                      { id: 'free', label: 'Free Plan', color: 'gray' },
+                      { id: 'gold', label: 'Gold Access', color: 'yellow' },
+                      { id: 'premium', label: 'Premium', color: 'red' }
+                    ].map(grade => (
                       <button
-                        key={cat._id}
+                        key={grade.id}
                         onClick={() => {
-                          const current = userSubForm.subscribedCategories || [];
-                          const updated = current.includes(cat.name) ? current.filter(c => c !== cat.name) : [...current, cat.name];
-                          setUserSubForm({ ...userSubForm, subscribedCategories: updated });
+                          const allCategoryNames = categories.map(c => c.name);
+                          setUserSubForm({
+                            subscription: grade.id,
+                            subscribedCategories: grade.id === 'premium' ? allCategoryNames : []
+                          });
                         }}
-                        className={`px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${userSubForm.subscribedCategories?.includes(cat.name) ? 'bg-white text-black' : 'bg-white/5 text-gray-500 hover:text-white'}`}
+                        className={`py-6 rounded-3xl font-black uppercase text-[10px] tracking-widest transition-all border ${userSubForm.subscription === grade.id
+                          ? (grade.id === 'red' ? 'bg-red-600 border-red-600' : 'bg-white text-black border-white shadow-xl shadow-white/10')
+                          : 'bg-white/5 text-gray-600 border-white/5 hover:text-white'}`}
+                        style={{
+                          backgroundColor: userSubForm.subscription === grade.id ? (grade.id === 'premium' ? '#dc2626' : (grade.id === 'gold' ? '#eab308' : '#ffffff')) : '',
+                          color: userSubForm.subscription === grade.id ? (grade.id === 'gold' ? '#000000' : (grade.id === 'free' ? '#000000' : '#ffffff')) : ''
+                        }}
                       >
-                        {cat.name}
+                        {grade.label}
                       </button>
                     ))}
                   </div>
+                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest text-center mt-4 italic">
+                    {userSubForm.subscription === 'premium'
+                      ? '✨ Full Access: User can view all current and future modules.'
+                      : userSubForm.subscription === 'gold'
+                        ? '🔑 Selective Access: Authorization is limited to hand-picked categories below.'
+                        : '🔒 Zero Access: User cannot view any restricted categories.'}
+                  </p>
                 </div>
-              )}
 
-              <div className="pt-6">
-                <button onClick={() => handleUserUpdate(selectedUser._id)} className="w-full py-7 bg-white text-black font-black uppercase rounded-[2.5rem] shadow-2xl hover:bg-red-600 hover:text-white transition-all tracking-widest text-xs">Save Changes</button>
+                {userSubForm.subscription === 'gold' && (
+                  <div className="space-y-4 animate-in fade-in slide-in-from-top-4 duration-500">
+                    <div className="flex justify-between items-center ml-6">
+                      <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Authorize Specific Categories</label>
+                      <span className="text-[9px] font-black text-yellow-500 uppercase tracking-widest">
+                        {userSubForm.subscribedCategories?.length || 0} Modules Selected
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-2 p-8 bg-black/40 rounded-[2.5rem] border border-white/5 max-h-[280px] overflow-y-auto custom-scrollbar shadow-inner">
+                      {categories.map(cat => (
+                        <button
+                          key={cat._id}
+                          type="button"
+                          onClick={() => {
+                            const current = userSubForm.subscribedCategories || [];
+                            const updated = current.includes(cat.name) ? current.filter(c => c !== cat.name) : [...current, cat.name];
+                            setUserSubForm({ ...userSubForm, subscribedCategories: updated });
+                          }}
+                          className={`px-5 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${userSubForm.subscribedCategories?.includes(cat.name) ? 'bg-yellow-500 text-black border-yellow-500 shadow-lg shadow-yellow-900/20' : 'bg-white/5 text-gray-600 border-white/5 hover:text-white hover:bg-white/10'}`}
+                        >
+                          {cat.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="pt-6">
+                  <button onClick={() => handleUserUpdate(selectedUser._id)} className="w-full py-7 bg-white text-black font-black uppercase rounded-[2.5rem] shadow-2xl hover:bg-red-600 hover:text-white transition-all tracking-widest text-xs">Save Changes</button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        )
+      }
+    </div >
   );
 }

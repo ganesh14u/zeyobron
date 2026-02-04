@@ -252,6 +252,47 @@ export default function Navbar() {
         )}
       </div>
 
+      {/* Admin Quick Switch (Specific for Admins) */}
+      {user?.role === 'admin' && (
+        <div className="nav-flip-switch-container hidden lg:block mr-4 scale-90">
+          <div className="nav-flip-switch">
+            <input
+              type="radio"
+              id="nav-switch-home"
+              name="nav-flip-switch"
+              checked={!location.pathname.startsWith('/admin')}
+              onChange={() => navigate('/')}
+            />
+            <input
+              type="radio"
+              id="nav-switch-admin"
+              name="nav-flip-switch"
+              checked={location.pathname.startsWith('/admin')}
+              onChange={() => navigate('/admin')}
+            />
+
+            <label htmlFor="nav-switch-home" className="switch-button">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8h5z" />
+              </svg>
+              <span>Home</span>
+            </label>
+
+            <label htmlFor="nav-switch-admin" className="switch-button">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+              </svg>
+              <span>Admin</span>
+            </label>
+
+            <div className="switch-card">
+              <div className="card-face card-front" />
+              <div className="card-face card-back" />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Right Section: User Profile (Desktop) */}
       <div className="hidden md:flex items-center gap-6">
         {user ? (
@@ -262,8 +303,12 @@ export default function Navbar() {
               </div>
               <div className="flex items-center justify-end gap-1.5 mt-0.5">
                 {user.subscription === 'premium' ? (
-                  <span className="text-[10px] font-black bg-yellow-500 text-black px-1.5 py-0.5 rounded-sm shadow-sm flex items-center gap-1">
+                  <span className="text-[10px] font-black bg-red-600 text-white px-1.5 py-0.5 rounded-sm shadow-sm flex items-center gap-1">
                     <span className="text-[8px]">⭐</span> PREMIUM
+                  </span>
+                ) : user.subscription === 'gold' ? (
+                  <span className="text-[10px] font-black bg-yellow-500 text-black px-1.5 py-0.5 rounded-sm shadow-sm flex items-center gap-1">
+                    <span className="text-[8px]">🔑</span> GOLD
                   </span>
                 ) : (
                   <span className="text-[10px] font-bold bg-white/10 text-gray-300 px-1.5 py-0.5 rounded-sm">
@@ -301,20 +346,6 @@ export default function Navbar() {
                     </div>
                   </button>
 
-                  {user.role === 'admin' && (
-                    <button
-                      onClick={() => {
-                        setShowProfileMenu(false);
-                        navigate('/admin');
-                      }}
-                      className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-white/5 transition-colors group"
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className="text-lg">🛠️</span>
-                        <span className="text-sm font-medium text-gray-300 group-hover:text-white">Admin Dashboard</span>
-                      </div>
-                    </button>
-                  )}
 
                   <div className="h-px bg-white/5 my-2"></div>
 
@@ -407,14 +438,18 @@ export default function Navbar() {
                   {user.name?.charAt(0).toUpperCase()}
                 </div>
                 <div>
-                  <div className="font-bold text-white">{user.name}</div>
+                  <div className="font-bold text-white flex items-center gap-2">
+                    {user.name}
+                    {user.subscription === 'premium' ? (
+                      <span className="text-[8px] font-black bg-red-600 text-white px-1 py-0.5 rounded-sm">⭐</span>
+                    ) : user.subscription === 'gold' ? (
+                      <span className="text-[8px] font-black bg-yellow-500 text-black px-1 py-0.5 rounded-sm">🔑</span>
+                    ) : null}
+                  </div>
                   <div className="text-xs text-gray-500">{user.email}</div>
                 </div>
               </div>
               <button onClick={() => { navigate('/profile'); setShowProfileMenu(false); }} className="w-full text-left p-3 hover:bg-white/5 rounded-lg text-sm text-gray-300">Profile Settings</button>
-              {user.role === 'admin' && (
-                <button onClick={() => { navigate('/admin'); setShowProfileMenu(false); }} className="w-full text-left p-3 hover:bg-white/5 rounded-lg text-sm text-gray-300">Admin Dashboard</button>
-              )}
               <button onClick={() => { handleLogout(); setShowProfileMenu(false); }} className="w-full text-left p-3 hover:bg-red-500/10 rounded-lg text-sm text-red-500 font-bold">Sign Out</button>
             </div>
           ) : (

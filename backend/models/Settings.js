@@ -15,6 +15,11 @@ const settingsSchema = new mongoose.Schema({
         type: String,
         default: '20% OFF'
     },
+    goldCategoryPrice: {
+        type: Number,
+        required: true,
+        default: 1000
+    },
     updatedAt: {
         type: Date,
         default: Date.now

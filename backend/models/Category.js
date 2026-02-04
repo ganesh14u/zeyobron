@@ -5,6 +5,7 @@ const categorySchema = new mongoose.Schema({
   description: String,
   thumbnail: String,
   isPremium: { type: Boolean, default: false },
+  price: { type: Number, default: 1000 },
   createdAt: { type: Date, default: Date.now }
 });
 

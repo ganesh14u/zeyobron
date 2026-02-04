@@ -774,3 +774,155 @@ code {
   top: 10px;
   pointer-events: none;
 }
+
+/* Navigation Flip Switch Styles */
+.nav-flip-switch-container {
+  --card-width: 70px;
+  --card-height: 36px;
+  --switch-bg: rgba(255, 255, 255, 0.03);
+  --switch-border-color: rgba(255, 255, 255, 0.1);
+  --text-color: #ffffff;
+  --inactive-text-color: rgba(255, 255, 255, 0.3);
+  --icon-shadow-color: rgba(0, 0, 0, 0.4);
+  --card-bg: linear-gradient(135deg,
+      rgba(255, 255, 255, 0.12),
+      rgba(255, 255, 255, 0.04));
+  --highlight-color: #ff5569;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nav-flip-switch {
+  display: flex;
+  position: relative;
+  width: calc(var(--card-width) * 2);
+  height: var(--card-height);
+  background: var(--switch-bg);
+  border-radius: 12px;
+  border: 1px solid var(--switch-border-color);
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  perspective: 500px;
+}
+
+.nav-flip-switch input[type="radio"] {
+  display: none;
+}
+
+.nav-flip-switch .switch-button {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  z-index: 2;
+  color: var(--inactive-text-color);
+  transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+  position: relative;
+}
+
+.nav-flip-switch .switch-button:hover {
+  color: #ffffff;
+}
+
+.nav-flip-switch .switch-button svg {
+  transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+  width: 14px;
+  height: 14px;
+}
+
+.nav-flip-switch .switch-button:hover svg {
+  transform: translateY(-1px);
+}
+
+.nav-flip-switch .switch-button span {
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  font-style: italic;
+}
+
+.nav-flip-switch .switch-card {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: var(--card-width);
+  height: var(--card-height);
+  z-index: 1;
+  transform-style: preserve-3d;
+}
+
+.nav-flip-switch .card-face {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 10px;
+  background: var(--card-bg);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backface-visibility: hidden;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+.nav-flip-switch .card-back {
+  transform: rotateY(180deg);
+}
+
+.nav-flip-switch #nav-switch-admin:checked~.switch-card {
+  animation: navFlipRight 0.5s cubic-bezier(0.76, 0, 0.24, 1) forwards;
+}
+
+.nav-flip-switch #nav-switch-home:checked~.switch-card {
+  animation: navFlipLeft 0.5s cubic-bezier(0.76, 0, 0.24, 1) forwards;
+}
+
+@keyframes navFlipRight {
+  0% {
+    transform: translateX(0%) rotateY(0deg);
+  }
+
+  50% {
+    transform: translateX(50%) rotateY(90deg) scale(1.15);
+  }
+
+  100% {
+    transform: translateX(100%) rotateY(180deg) scale(1);
+  }
+}
+
+@keyframes navFlipLeft {
+  0% {
+    transform: translateX(100%) rotateY(180deg);
+  }
+
+  50% {
+    transform: translateX(50%) rotateY(90deg) scale(1.15);
+  }
+
+  100% {
+    transform: translateX(0%) rotateY(0deg) scale(1);
+  }
+}
+
+.nav-flip-switch #nav-switch-home:checked~[for="nav-switch-home"],
+.nav-flip-switch #nav-switch-admin:checked~[for="nav-switch-admin"] {
+  color: #ffffff;
+  text-shadow: 0 0 10px rgba(255, 85, 105, 0.5);
+}
+
+.nav-flip-switch #nav-switch-home:checked~[for="nav-switch-home"]::after,
+.nav-flip-switch #nav-switch-admin:checked~[for="nav-switch-admin"]::after {
+  content: "";
+  position: absolute;
+  bottom: 5px;
+  width: 15px;
+  height: 2px;
+  background: var(--highlight-color);
+  border-radius: 2px;
+  box-shadow: 0 0 10px var(--highlight-color);
+}
