@@ -11,16 +11,13 @@ const router = express.Router();
 const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID;
 const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET;
 
-if (!RAZORPAY_KEY_ID || !RAZORPAY_KEY_SECRET) {
-    console.warn("⚠️ Razorpay API keys are missing in environment variables!");
-} else {
-    console.log(`✅ Razorpay initialized with Key ID: ${RAZORPAY_KEY_ID.substring(0, 10)}...`);
-}
-
 const razorpay = new Razorpay({
     key_id: RAZORPAY_KEY_ID || 'rzp_test_placeholder',
     key_secret: RAZORPAY_KEY_SECRET || 'secret_placeholder',
 });
+
+// Helper to check if keys are properly configured
+const isConfigured = () => RAZORPAY_KEY_ID && RAZORPAY_KEY_SECRET;
 
 // @desc    Create Razorpay Order
 // @route   POST /api/payment/order
@@ -53,11 +50,23 @@ router.post("/order", protect, async (req, res) => {
             notes: notes
         };
 
+        if (!isConfigured()) {
+            console.error("Order Creation Error: Razorpay keys not configured on server");
+            return res.status(500).json({
+                message: "Payment system not configured. Please check server environment variables.",
+                error: "MISSING_KEYS"
+            });
+        }
+
         const order = await razorpay.orders.create(options);
         res.json(order);
     } catch (error) {
         console.error("Order Creation Error:", error);
-        res.status(500).json({ message: "Failed to create order" });
+        res.status(500).json({
+            message: "Failed to create payment order",
+            error: error.message,
+            details: error.description || "No additional details"
+        });
     }
 });
 
@@ -128,11 +137,22 @@ router.post("/verify", protect, async (req, res) => {
                 message: type === 'gold' ? "Payment verified! Your selected modules are now unlocked." : "Payment verified and account upgraded to Premium Elite!"
             });
         } else {
-            res.status(400).json({ message: "Invalid payment signature" });
+            console.error("Signature Mismatch:", {
+                received: razorpay_signature,
+                expected: expectedSign,
+                usingSecret: RAZORPAY_KEY_SECRET ? "Present" : "Placeholder"
+            });
+            res.status(400).json({
+                message: "Invalid payment signature",
+                error: "SIGNATURE_MISMATCH"
+            });
         }
     } catch (error) {
         console.error("Payment Verification Error:", error);
-        res.status(500).json({ message: "Verification failed" });
+        res.status(500).json({
+            message: "Verification failed",
+            error: error.message
+        });
     }
 });
 

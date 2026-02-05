@@ -212,9 +212,12 @@ export default function Profile() {
       rzp.open();
 
     } catch (err) {
-      const msg = err.response?.data?.message || 'Failed to initiate payment. Check your Razorpay keys and Internet.';
-      notify(msg, 'error');
       console.error('Payment Error:', err);
+      const backendMsg = err.response?.data?.message;
+      const errorDetail = err.response?.data?.error || err.message;
+      const fullMsg = backendMsg ? `${backendMsg} (${errorDetail})` : 'Failed to initiate payment. Check your Razorpay keys and Internet.';
+
+      notify(fullMsg, 'error');
     }
   };
 
