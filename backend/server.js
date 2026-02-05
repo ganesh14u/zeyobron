@@ -1,5 +1,5 @@
+import 'dotenv/config';
 import express from "express";
-import dotenv from "dotenv";
 import cors from "cors";
 import compression from "compression";
 import connectDB from "./config/db.js";
@@ -17,7 +17,6 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-dotenv.config();
 const app = express();
 
 // ✅ Static folder for uploads
@@ -31,6 +30,7 @@ const allowedOrigins = [
   "https://zeyobron.netlify.app", // Legacy
   "https://datasai.netlify.app",  // Potential new name
   "http://localhost:5173",        // Local dev
+  // Add your custom live domain here (e.g., "https://datasai.com")
 ];
 
 // ✅ CORS middleware

@@ -8,10 +8,18 @@ import { protect } from "../middleware/auth.js";
 const router = express.Router();
 
 // Initialize Razorpay
-// These should be in .env in production
+const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID;
+const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET;
+
+if (!RAZORPAY_KEY_ID || !RAZORPAY_KEY_SECRET) {
+    console.warn("⚠️ Razorpay API keys are missing in environment variables!");
+} else {
+    console.log(`✅ Razorpay initialized with Key ID: ${RAZORPAY_KEY_ID.substring(0, 10)}...`);
+}
+
 const razorpay = new Razorpay({
-    key_id: process.env.RAZORPAY_KEY_ID || 'rzp_test_placeholder',
-    key_secret: process.env.RAZORPAY_KEY_SECRET || 'secret_placeholder',
+    key_id: RAZORPAY_KEY_ID || 'rzp_test_placeholder',
+    key_secret: RAZORPAY_KEY_SECRET || 'secret_placeholder',
 });
 
 // @desc    Create Razorpay Order
@@ -63,7 +71,7 @@ router.post("/verify", protect, async (req, res) => {
         // Verify Signature
         const sign = razorpay_order_id + "|" + razorpay_payment_id;
         const expectedSign = crypto
-            .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET || 'secret_placeholder')
+            .createHmac("sha256", RAZORPAY_KEY_SECRET || 'secret_placeholder')
             .update(sign.toString())
             .digest("hex");
 
