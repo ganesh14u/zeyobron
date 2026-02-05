@@ -22,6 +22,9 @@ jobs:
           cd frontend
           npm install
           npm run build
+        env:
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+          VITE_RAZORPAY_KEY_ID: ${{ secrets.VITE_RAZORPAY_KEY_ID }}
 
       - name: Deploy to Netlify
         uses: nwtgck/actions-netlify@v3
