@@ -88,7 +88,9 @@ export default function Admin() {
   const [platformSettings, setPlatformSettings] = useState({
     premiumPrice: 20000,
     originalPrice: 25000,
-    discountLabel: '20% OFF'
+    discountLabel: '20% OFF',
+    goldCategoryPrice: 1000,
+    razorpayMode: 'test'
   });
 
   // Auto-calculate discount percentage
@@ -463,12 +465,30 @@ export default function Admin() {
             </h1>
           </div>
           {activeTab === 'overview' && (
-            <button
-              onClick={handleResetPayments}
-              className="px-6 py-3 bg-red-600/10 text-red-500 border border-red-600/20 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-red-600 hover:text-white transition-all shadow-lg flex items-center gap-2"
-            >
-              <span>🧹</span> Reset Payment Data
-            </button>
+            <div className="flex gap-4">
+              <button
+                onClick={async () => {
+                  const newMode = platformSettings.razorpayMode === 'live' ? 'test' : 'live';
+                  try {
+                    await axios.put(`${API_URL}/admin/settings`, { ...platformSettings, razorpayMode: newMode }, getAuthHeaders());
+                    setPlatformSettings(prev => ({ ...prev, razorpayMode: newMode }));
+                    notify(`Switched to ${newMode.toUpperCase()} Razorpay Mode`, 'success');
+                  } catch (err) {
+                    notify('Failed to switch mode', 'error');
+                  }
+                }}
+                className={`px-6 py-3 border rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg flex items-center gap-2 ${platformSettings.razorpayMode === 'live' ? 'bg-green-600/10 text-green-500 border-green-600/20 hover:bg-green-600 hover:text-white' : 'bg-yellow-600/10 text-yellow-500 border-yellow-600/20 hover:bg-yellow-600 hover:text-white'}`}
+              >
+                <span>{platformSettings.razorpayMode === 'live' ? '🔴 NOW IN LIVE ' : '🟡 NOW IN TEST'}</span>
+              </button>
+
+              <button
+                onClick={handleResetPayments}
+                className="px-6 py-3 bg-red-600/10 text-red-500 border border-red-600/20 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-red-600 hover:text-white transition-all shadow-lg flex items-center gap-2"
+              >
+                <span>🧹</span> Reset Payment Data
+              </button>
+            </div>
           )}
         </header>
 

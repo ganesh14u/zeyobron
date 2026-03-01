@@ -20,6 +20,11 @@ const settingsSchema = new mongoose.Schema({
         required: true,
         default: 1000
     },
+    razorpayMode: {
+        type: String,
+        enum: ['test', 'live'],
+        default: 'test'
+    },
     updatedAt: {
         type: Date,
         default: Date.now

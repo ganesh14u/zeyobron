@@ -7,17 +7,31 @@ import { protect } from "../middleware/auth.js";
 
 const router = express.Router();
 
-// Initialize Razorpay
-const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID;
-const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET;
+const getRazorpayKeys = (mode) => {
+    if (mode === 'live') {
+        return {
+            key_id: process.env.RAZORPAY_KEY_ID,
+            key_secret: process.env.RAZORPAY_KEY_SECRET
+        };
+    }
+    return {
+        key_id: process.env.RAZORPAY_TEST_KEY_ID || 'rzp_test_placeholder',
+        key_secret: process.env.RAZORPAY_TEST_KEY_SECRET || 'secret_placeholder'
+    };
+};
 
-const razorpay = new Razorpay({
-    key_id: RAZORPAY_KEY_ID || 'rzp_test_placeholder',
-    key_secret: RAZORPAY_KEY_SECRET || 'secret_placeholder',
-});
+const getRazorpayInstance = (mode) => {
+    const keys = getRazorpayKeys(mode);
+    return new Razorpay({
+        key_id: keys.key_id,
+        key_secret: keys.key_secret,
+    });
+};
 
-// Helper to check if keys are properly configured
-const isConfigured = () => RAZORPAY_KEY_ID && RAZORPAY_KEY_SECRET;
+const isConfigured = (mode) => {
+    const keys = getRazorpayKeys(mode);
+    return keys.key_id && keys.key_secret;
+};
 
 // @desc    Create Razorpay Order
 // @route   POST /api/payment/order
@@ -25,7 +39,10 @@ const isConfigured = () => RAZORPAY_KEY_ID && RAZORPAY_KEY_SECRET;
 router.post("/order", protect, async (req, res) => {
     try {
         const { type, categories } = req.body;
-        const settings = await Settings.findOne() || { premiumPrice: 20000, goldCategoryPrice: 1000 };
+        const settings = await Settings.findOne() || { premiumPrice: 20000, goldCategoryPrice: 1000, razorpayMode: 'test' };
+        const mode = settings.razorpayMode || 'test';
+        const rzpParams = getRazorpayKeys(mode);
+        const razorpay = getRazorpayInstance(mode);
 
         let amount = settings.premiumPrice;
         let notes = { type: 'premium' };
@@ -50,16 +67,16 @@ router.post("/order", protect, async (req, res) => {
             notes: notes
         };
 
-        if (!isConfigured()) {
-            console.error("Order Creation Error: Razorpay keys not configured on server");
+        if (!isConfigured(mode)) {
+            console.error(`Order Creation Error: Razorpay keys not configured for ${mode} mode`);
             return res.status(500).json({
-                message: "Payment system not configured. Please check server environment variables.",
+                message: `Payment system not configured for ${mode} mode. Please check server environment variables.`,
                 error: "MISSING_KEYS"
             });
         }
 
         const order = await razorpay.orders.create(options);
-        res.json(order);
+        res.json({ ...order, key_id: rzpParams.key_id });
     } catch (error) {
         console.error("Order Creation Error:", error);
         res.status(500).json({
@@ -77,10 +94,15 @@ router.post("/verify", protect, async (req, res) => {
     try {
         const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
 
+        const settings = await Settings.findOne() || { razorpayMode: 'test' };
+        const mode = settings.razorpayMode || 'test';
+        const rzpParams = getRazorpayKeys(mode);
+        const razorpay = getRazorpayInstance(mode);
+
         // Verify Signature
         const sign = razorpay_order_id + "|" + razorpay_payment_id;
         const expectedSign = crypto
-            .createHmac("sha256", RAZORPAY_KEY_SECRET || 'secret_placeholder')
+            .createHmac("sha256", rzpParams.key_secret)
             .update(sign.toString())
             .digest("hex");
 
@@ -140,7 +162,8 @@ router.post("/verify", protect, async (req, res) => {
             console.error("Signature Mismatch:", {
                 received: razorpay_signature,
                 expected: expectedSign,
-                usingSecret: RAZORPAY_KEY_SECRET ? "Present" : "Placeholder"
+                mode: mode,
+                usingSecret: rzpParams.key_secret ? "Present" : "Placeholder"
             });
             res.status(400).json({
                 message: "Invalid payment signature",

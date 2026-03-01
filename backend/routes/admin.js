@@ -458,7 +458,8 @@ router.get('/settings', protect, async (req, res) => {
         premiumPrice: 20000,
         originalPrice: 25000,
         discountLabel: '20% OFF',
-        goldCategoryPrice: 1000
+        goldCategoryPrice: 1000,
+        razorpayMode: 'test'
       });
     }
     res.json(settings);

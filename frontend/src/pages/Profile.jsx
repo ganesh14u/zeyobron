@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import LoadingSpinner from '../components/LoadingSpinner';
-import { API_URL, RAZORPAY_KEY_ID } from '../config';
+import { API_URL } from '../config';
 import { useNotification } from '../components/Notification';
 
 export default function Profile() {
@@ -156,11 +156,11 @@ export default function Profile() {
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      const { id: order_id, amount, currency } = orderRes.data;
+      const { id: order_id, amount, currency, key_id } = orderRes.data;
 
       // 2. Open Razorpay Checkout
       const options = {
-        key: RAZORPAY_KEY_ID || 'rzp_test_placeholder', // Should be in .env
+        key: key_id,
         amount: amount,
         currency: currency,
         name: "Data Sai Premium",
@@ -241,11 +241,11 @@ export default function Profile() {
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      const { id: order_id, amount, currency } = orderRes.data;
+      const { id: order_id, amount, currency, key_id } = orderRes.data;
 
       // 2. Open Razorpay Checkout
       const options = {
-        key: RAZORPAY_KEY_ID || 'rzp_test_placeholder',
+        key: key_id,
         amount: amount,
         currency: currency,
         name: "Data Sai Gold Access",
