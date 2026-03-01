@@ -1,19 +1,22 @@
 import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense, lazy } from 'react';
 import axios from 'axios';
-import Home from './pages/Home';
-import Movie from './pages/Movie';
-import Category from './pages/Category';
-import Admin from './pages/Admin';
-import Login from './pages/Login';
-import ForgotPassword from './pages/ForgotPassword';
-import ResetPassword from './pages/ResetPassword';
-import Profile from './pages/Profile';
-import Search from './pages/Search';
+
+const Home = lazy(() => import('./pages/Home'));
+const Movie = lazy(() => import('./pages/Movie'));
+const Category = lazy(() => import('./pages/Category'));
+const Admin = lazy(() => import('./pages/Admin'));
+const Login = lazy(() => import('./pages/Login'));
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
+const ResetPassword = lazy(() => import('./pages/ResetPassword'));
+const Profile = lazy(() => import('./pages/Profile'));
+const Search = lazy(() => import('./pages/Search'));
+const Support = lazy(() => import('./pages/Support'));
+
 import Navbar from './components/Navbar';
-import Support from './pages/Support';
 import Notification, { useNotification } from './components/Notification';
 import ConfirmDialog from './components/ConfirmDialog';
+import LoadingSpinner from './components/LoadingSpinner';
 import { API_URL } from './config';
 
 export default function App() {
@@ -185,18 +188,20 @@ export default function App() {
       <Navbar />
       <Notification />
       <ConfirmDialog />
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/reset-password/:token" element={<ResetPassword />} />
-        <Route path="/profile" element={<Profile />} />
-        <Route path="/search" element={<Search />} />
-        <Route path="/category/:categoryName" element={<Category />} />
-        <Route path="/movie/:id" element={<Movie />} />
-        <Route path="/admin/*" element={<Admin />} />
-        <Route path="/support" element={<Support />} />
-      </Routes>
+      <Suspense fallback={<LoadingSpinner />}>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password/:token" element={<ResetPassword />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/search" element={<Search />} />
+          <Route path="/category/:categoryName" element={<Category />} />
+          <Route path="/movie/:id" element={<Movie />} />
+          <Route path="/admin/*" element={<Admin />} />
+          <Route path="/support" element={<Support />} />
+        </Routes>
+      </Suspense>
     </div>
   );
 }

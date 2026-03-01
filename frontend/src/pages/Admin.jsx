@@ -1432,7 +1432,7 @@ export default function Admin() {
                           <div key={idx} className="space-y-2">
                             <p className="text-[8px] font-black text-gray-500 uppercase tracking-widest">User Attachment:</p>
                             <a href={url} target="_blank" rel="noopener noreferrer" className="block rounded-3xl overflow-hidden border border-white/10 hover:border-white/30 transition-all shadow-2xl">
-                              <img src={url} alt="attachment" className="w-full h-auto object-cover max-h-[400px]" />
+                              <img src={url} alt="attachment" className="w-full h-auto object-cover max-h-[400px]" loading="lazy" />
                             </a>
                           </div>
                         ))}

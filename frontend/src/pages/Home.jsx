@@ -134,6 +134,8 @@ export default function Home() {
                 src={featured[activeHeroIdx].poster}
                 alt={featured[activeHeroIdx].title}
                 className="w-full h-full object-cover opacity-80"
+                fetchPriority="high"
+                decoding="async"
               />
             </div>
 
@@ -229,6 +231,7 @@ export default function Home() {
                       src={movies.find(m => m.category?.includes(cat.name))?.poster || '/placeholder.jpg'}
                       className="w-full h-full object-cover transition-all duration-700 scale-110 group-hover:scale-100"
                       alt=""
+                      loading="lazy"
                     />
                   </div>
 

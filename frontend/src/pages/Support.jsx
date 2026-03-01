@@ -416,7 +416,7 @@ export default function Support() {
                                             <div className="mt-8 grid grid-cols-1 gap-4">
                                                 {msg.attachments.map((url, idx) => (
                                                     <a key={idx} href={url} target="_blank" rel="noopener noreferrer" className="block rounded-[2.5rem] overflow-hidden border border-white/10 hover:border-white/30 transition-all group-hover:scale-[1.02]">
-                                                        <img src={url} alt="attachment" className="w-full h-auto object-cover max-h-96" />
+                                                        <img src={url} alt="attachment" className="w-full h-auto object-cover max-h-96" loading="lazy" />
                                                     </a>
                                                 ))}
                                             </div>

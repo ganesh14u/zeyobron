@@ -326,7 +326,7 @@ export default function Movie() {
                       className="group flex gap-5 bg-[#111] border border-white/5 p-4 rounded-3xl hover:bg-[#161616] hover:border-white/20 transition-all cursor-pointer relative overflow-hidden"
                     >
                       <div className="w-36 h-24 flex-shrink-0 rounded-2xl overflow-hidden bg-black border border-white/5 relative">
-                        <img src={related.poster} alt="" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                        <img src={related.poster} alt="" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" loading="lazy" />
                         {!hasRelAccess && (
                           <div className="absolute inset-0 bg-black/60 flex items-center justify-center backdrop-blur-[2px]">
                             <span className="text-xl">🔒</span>

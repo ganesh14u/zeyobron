@@ -433,7 +433,7 @@ export default function Navbar() {
                   }}
                   className="w-full px-4 py-3 flex items-center gap-3 hover:bg-white/5 border-b border-white/5 last:border-0"
                 >
-                  <img src={movie.poster} className="w-8 h-10 object-cover rounded bg-gray-800" alt="" />
+                  <img src={movie.poster} className="w-8 h-10 object-cover rounded bg-gray-800" alt="" loading="lazy" />
                   <div className="text-left">
                     <div className="text-white font-bold text-xs truncate">{movie.title}</div>
                     <div className="text-[10px] text-gray-500">{movie.category?.[0]}</div>
