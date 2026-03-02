@@ -739,7 +739,7 @@ export default function Admin() {
 
             <div className="bg-[#161616] rounded-[3rem] border border-white/5 overflow-hidden shadow-2xl">
               <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
+                <table className="w-full text-left border-collapse min-w-[900px]">
                   <thead>
                     <tr className="text-[10px] font-black text-gray-500 uppercase tracking-widest border-b border-white/5 bg-black/20">
                       <th className="p-10 w-20">
@@ -906,110 +906,112 @@ export default function Admin() {
             </div>
 
             <div className="bg-[#161616] rounded-[3rem] border border-white/5 overflow-hidden shadow-2xl">
-              <table className="w-full text-left">
-                <thead>
-                  <tr className="text-[10px] font-black text-gray-500 uppercase tracking-widest border-b border-white/5 bg-black/20">
-                    <th className="p-10">User Details</th>
-                    <th className="p-10">Subscription</th>
-                    <th className="p-10">Authorized Categories</th>
-                    <th className="p-10 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/5">
-                  {(() => {
-                    const filteredUsers = users
-                      .filter(u => u.email.toLowerCase().includes(userSearchQuery.toLowerCase()) || u.name.toLowerCase().includes(userSearchQuery.toLowerCase()))
-                      .filter(u => subscriptionFilter === 'all' || u.subscription === subscriptionFilter)
-                      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+              <div className="overflow-x-auto">
+                <table className="w-full text-left min-w-[800px]">
+                  <thead>
+                    <tr className="text-[10px] font-black text-gray-500 uppercase tracking-widest border-b border-white/5 bg-black/20">
+                      <th className="p-10">User Details</th>
+                      <th className="p-10">Subscription</th>
+                      <th className="p-10">Authorized Categories</th>
+                      <th className="p-10 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {(() => {
+                      const filteredUsers = users
+                        .filter(u => u.email.toLowerCase().includes(userSearchQuery.toLowerCase()) || u.name.toLowerCase().includes(userSearchQuery.toLowerCase()))
+                        .filter(u => subscriptionFilter === 'all' || u.subscription === subscriptionFilter)
+                        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-                    const totalUserPages = Math.ceil(filteredUsers.length / usersPerPage);
-                    const startUserIndex = (userPage - 1) * usersPerPage;
-                    const paginatedUsers = filteredUsers.slice(startUserIndex, startUserIndex + usersPerPage);
+                      const totalUserPages = Math.ceil(filteredUsers.length / usersPerPage);
+                      const startUserIndex = (userPage - 1) * usersPerPage;
+                      const paginatedUsers = filteredUsers.slice(startUserIndex, startUserIndex + usersPerPage);
 
-                    return paginatedUsers.map(u => (
-                      <tr key={u._id} className="group hover:bg-white/[0.01] transition-all">
-                        <td className="p-10">
-                          <div className="space-y-1">
-                            <p className="font-black text-white text-lg uppercase tracking-tighter italic leading-none">{u.name}</p>
-                            <p className="text-[10px] font-bold text-gray-600">{u.email}</p>
-                          </div>
-                        </td>
-                        <td className="p-10">
-                          <div className="flex flex-col gap-2">
-                            <span className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center gap-3 w-fit ${u.subscription === 'premium'
-                              ? 'bg-red-600/10 text-red-500 border border-red-600/20'
-                              : u.subscription === 'gold'
-                                ? 'bg-yellow-500/10 text-yellow-500 border border-yellow-500/20'
-                                : 'bg-gray-800/10 text-gray-400 border border-white/5'
-                              }`}>
-                              {u.subscription !== 'free' && <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${u.subscription === 'premium' ? 'bg-red-500' : 'bg-yellow-500'}`}></span>}
-                              {u.subscription === 'premium' ? 'Premium Access' : u.subscription === 'gold' ? 'Gold Access' : 'Free Plan'}
-                            </span>
-                            {!u.isActive && (
-                              <span className="px-4 py-1 bg-red-600/20 text-red-500 border border-red-600/30 rounded-lg text-[7px] font-black uppercase tracking-[0.2em] w-fit">
-                                ⚠️ Account Banned
+                      return paginatedUsers.map(u => (
+                        <tr key={u._id} className="group hover:bg-white/[0.01] transition-all">
+                          <td className="p-10">
+                            <div className="space-y-1">
+                              <p className="font-black text-white text-lg uppercase tracking-tighter italic leading-none">{u.name}</p>
+                              <p className="text-[10px] font-bold text-gray-600">{u.email}</p>
+                            </div>
+                          </td>
+                          <td className="p-10">
+                            <div className="flex flex-col gap-2">
+                              <span className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center gap-3 w-fit ${u.subscription === 'premium'
+                                ? 'bg-red-600/10 text-red-500 border border-red-600/20'
+                                : u.subscription === 'gold'
+                                  ? 'bg-yellow-500/10 text-yellow-500 border border-yellow-500/20'
+                                  : 'bg-gray-800/10 text-gray-400 border border-white/5'
+                                }`}>
+                                {u.subscription !== 'free' && <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${u.subscription === 'premium' ? 'bg-red-500' : 'bg-yellow-500'}`}></span>}
+                                {u.subscription === 'premium' ? 'Premium Access' : u.subscription === 'gold' ? 'Gold Access' : 'Free Plan'}
                               </span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="p-10">
-                          <div className="flex flex-wrap gap-1.5 max-w-[280px]">
-                            {u.subscription === 'free' ? (
-                              <span className="text-[10px] font-bold text-gray-800 italic uppercase tracking-widest">No Category Access</span>
-                            ) : u.subscription === 'premium' ? (
-                              <span className="px-3 py-1 bg-red-600/10 text-red-500 text-[8px] font-black rounded-lg border border-red-600/20 uppercase tracking-tighter">✨ Platform-Wide</span>
-                            ) : (
-                              u.subscribedCategories?.length > 0 ? (
+                              {!u.isActive && (
+                                <span className="px-4 py-1 bg-red-600/20 text-red-500 border border-red-600/30 rounded-lg text-[7px] font-black uppercase tracking-[0.2em] w-fit">
+                                  ⚠️ Account Banned
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="p-10">
+                            <div className="flex flex-wrap gap-1.5 max-w-[280px]">
+                              {u.subscription === 'free' ? (
+                                <span className="text-[10px] font-bold text-gray-800 italic uppercase tracking-widest">No Category Access</span>
+                              ) : u.subscription === 'premium' ? (
+                                <span className="px-3 py-1 bg-red-600/10 text-red-500 text-[8px] font-black rounded-lg border border-red-600/20 uppercase tracking-tighter">✨ Platform-Wide</span>
+                              ) : (
+                                u.subscribedCategories?.length > 0 ? (
+                                  <>
+                                    {u.subscribedCategories.slice(0, 2).map(c => (
+                                      <span key={c} className="px-3 py-1 bg-yellow-500/5 text-yellow-500 text-[8px] font-black rounded-lg border border-yellow-500/20 uppercase tracking-tighter">{c}</span>
+                                    ))}
+                                    {u.subscribedCategories.length > 2 && (
+                                      <span className="px-2 py-1 bg-white/5 text-gray-500 text-[7px] font-black rounded-lg border border-white/10 uppercase tracking-tighter">
+                                        +{u.subscribedCategories.length - 2} More
+                                      </span>
+                                    )}
+                                  </>
+                                ) : <span className="text-[9px] font-bold text-red-700 italic uppercase tracking-widest">Selection Required</span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="p-10 text-right">
+                            <div className="flex justify-end items-center gap-3">
+                              {u.role !== 'admin' ? (
                                 <>
-                                  {u.subscribedCategories.slice(0, 2).map(c => (
-                                    <span key={c} className="px-3 py-1 bg-yellow-500/5 text-yellow-500 text-[8px] font-black rounded-lg border border-yellow-500/20 uppercase tracking-tighter">{c}</span>
-                                  ))}
-                                  {u.subscribedCategories.length > 2 && (
-                                    <span className="px-2 py-1 bg-white/5 text-gray-500 text-[7px] font-black rounded-lg border border-white/10 uppercase tracking-tighter">
-                                      +{u.subscribedCategories.length - 2} More
-                                    </span>
-                                  )}
+                                  <button
+                                    onClick={() => { setSelectedUser(u); setUserSubForm({ subscription: u.subscription, subscribedCategories: u.subscribedCategories || [] }) }}
+                                    className="px-5 py-3 bg-white text-black text-[9px] font-black rounded-xl hover:bg-white/90 active:scale-95 transition-all shadow-lg uppercase tracking-widest"
+                                  >
+                                    Edit
+                                  </button>
+                                  <button
+                                    onClick={() => handleToggleUserStatus(u)}
+                                    className={`px-5 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all active:scale-95 flex items-center gap-2 ${u.isActive ? 'bg-red-600/10 text-red-500 border border-red-600/20 hover:bg-red-600 hover:text-white' : 'bg-green-600/10 text-green-500 border border-green-600/20 hover:bg-green-600 hover:text-white'}`}
+                                  >
+                                    {u.isActive ? '🚫' : '✅'}
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteUser(u)}
+                                    className="w-10 h-10 flex items-center justify-center bg-white/5 border border-white/10 rounded-xl hover:bg-red-600 hover:border-red-600 transition-all text-xs"
+                                    title="Permanently Delete User"
+                                  >
+                                    🗑️
+                                  </button>
                                 </>
-                              ) : <span className="text-[9px] font-bold text-red-700 italic uppercase tracking-widest">Selection Required</span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="p-10 text-right">
-                          <div className="flex justify-end items-center gap-3">
-                            {u.role !== 'admin' ? (
-                              <>
-                                <button
-                                  onClick={() => { setSelectedUser(u); setUserSubForm({ subscription: u.subscription, subscribedCategories: u.subscribedCategories || [] }) }}
-                                  className="px-5 py-3 bg-white text-black text-[9px] font-black rounded-xl hover:bg-white/90 active:scale-95 transition-all shadow-lg uppercase tracking-widest"
-                                >
-                                  Edit
-                                </button>
-                                <button
-                                  onClick={() => handleToggleUserStatus(u)}
-                                  className={`px-5 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all active:scale-95 flex items-center gap-2 ${u.isActive ? 'bg-red-600/10 text-red-500 border border-red-600/20 hover:bg-red-600 hover:text-white' : 'bg-green-600/10 text-green-500 border border-green-600/20 hover:bg-green-600 hover:text-white'}`}
-                                >
-                                  {u.isActive ? '🚫' : '✅'}
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteUser(u)}
-                                  className="w-10 h-10 flex items-center justify-center bg-white/5 border border-white/10 rounded-xl hover:bg-red-600 hover:border-red-600 transition-all text-xs"
-                                  title="Permanently Delete User"
-                                >
-                                  🗑️
-                                </button>
-                              </>
-                            ) : (
-                              <span className="px-4 py-2 bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 rounded-xl text-[9px] font-black uppercase tracking-widest italic select-none">
-                                SYSTEM ADMIN
-                              </span>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ));
-                  })()}
-                </tbody>
-              </table>
+                              ) : (
+                                <span className="px-4 py-2 bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 rounded-xl text-[9px] font-black uppercase tracking-widest italic select-none">
+                                  SYSTEM ADMIN
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ));
+                    })()}
+                  </tbody>
+                </table>
+              </div>
 
               {/* Members Pagination */}
               {(() => {
@@ -1221,7 +1223,7 @@ export default function Admin() {
 
             <div className="bg-[#161616] rounded-[3rem] border border-white/5 overflow-hidden shadow-2xl">
               <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
+                <table className="w-full text-left border-collapse min-w-[900px]">
                   <thead>
                     <tr className="text-[10px] font-black text-gray-500 uppercase tracking-widest border-b border-white/5 bg-black/20">
                       <th className="p-10">User Info</th>

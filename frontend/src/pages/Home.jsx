@@ -158,7 +158,7 @@ export default function Home() {
               </div>
 
               <div className="space-y-4">
-                <h1 className="text-5xl md:text-7xl font-black text-white tracking-tight leading-[0.9] uppercase italic">
+                <h1 className="text-4xl sm:text-5xl md:text-7xl font-black text-white tracking-tight leading-[0.9] uppercase italic">
                   {featured[activeHeroIdx].title}
                 </h1>
                 <div className="flex items-center gap-4 text-xs font-bold text-gray-400 uppercase tracking-widest">
@@ -168,7 +168,7 @@ export default function Home() {
                 </div>
               </div>
 
-              <p className="text-xl text-gray-300 font-medium leading-relaxed max-w-xl italic line-clamp-2">
+              <p className="text-sm sm:text-lg md:text-xl text-gray-300 font-medium leading-relaxed max-w-xl italic line-clamp-2">
                 {featured[activeHeroIdx].description}
               </p>
 

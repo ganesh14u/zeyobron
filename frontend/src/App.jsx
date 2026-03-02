@@ -179,7 +179,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[#141414] text-white">
+    <div className="min-h-screen bg-[#141414] text-white overflow-x-hidden">
       {!isBackendLive && (
         <div className="fixed top-0 left-0 right-0 z-[99999] bg-red-600 text-white text-center py-2 px-4 font-bold uppercase tracking-widest text-xs shadow-xl animate-pulse">
           ⚠️ Backend Not Connected
