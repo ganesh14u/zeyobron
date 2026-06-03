@@ -8,12 +8,49 @@ import { API_URL } from '../config';
 export default function Movie() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [movie, setMovie] = useState(null);
-  const [relatedMovies, setRelatedMovies] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [movie, setMovie] = useState(() => {
+    const cached = localStorage.getItem('cached_movies');
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      return parsed.find(m => m._id === id) || null;
+    }
+    return null;
+  });
+  const [relatedMovies, setRelatedMovies] = useState(() => {
+    const cached = localStorage.getItem('cached_movies');
+    const cachedMovie = cached ? JSON.parse(cached).find(m => m._id === id) : null;
+    if (cached && cachedMovie && cachedMovie.category && cachedMovie.category.length > 0) {
+      const parsed = JSON.parse(cached);
+      const categoryMovies = parsed
+        .filter(m => m.category?.some(cat => cachedMovie.category?.includes(cat)))
+        .sort((a, b) => {
+          const aBatch = a.batchNo || "";
+          const bBatch = b.batchNo || "";
+          return aBatch.localeCompare(bBatch, undefined, { numeric: true, sensitivity: 'base' });
+        });
+      const currentIndex = categoryMovies.findIndex(m => m._id === id);
+      if (currentIndex !== -1) {
+        const laterVideos = categoryMovies.slice(currentIndex + 1);
+        const earlierVideos = categoryMovies.slice(0, currentIndex);
+        return [...laterVideos, ...earlierVideos].slice(0, 10);
+      } else {
+        return categoryMovies.filter(m => m._id !== id).slice(0, 10);
+      }
+    }
+    return [];
+  });
+  const [loading, setLoading] = useState(() => {
+    const cached = localStorage.getItem('cached_movies');
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      return !parsed.some(m => m._id === id);
+    }
+    return true;
+  });
   const [hasAccess, setHasAccess] = useState(false);
   const [accessReason, setAccessReason] = useState('');
   const [videoData, setVideoData] = useState({ url: null, type: 'direct' });
+  const [checkingAccess, setCheckingAccess] = useState(true);
   const token = localStorage.getItem('token');
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
@@ -31,10 +68,18 @@ export default function Movie() {
         if (movieData.category && movieData.category.length > 0) {
           const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
           try {
-            const allMovies = await axios.get(`${API_URL}/movies`, config);
+            const cached = localStorage.getItem('cached_movies');
+            let allMoviesData = [];
+            if (cached) {
+              allMoviesData = JSON.parse(cached);
+            } else {
+              const allMovies = await axios.get(`${API_URL}/movies`, config);
+              allMoviesData = allMovies.data;
+              localStorage.setItem('cached_movies', JSON.stringify(allMoviesData));
+            }
 
             // 1. Get all movies in same category and sort them naturally
-            const categoryMovies = allMovies.data
+            const categoryMovies = allMoviesData
               .filter(m => m.category?.some(cat => movieData.category?.includes(cat)))
               .sort((a, b) => {
                 const aBatch = a.batchNo || "";
@@ -158,7 +203,13 @@ export default function Movie() {
           navigate('/login');
         }
       } finally {
-        setTimeout(() => setLoading(false), 800);
+        setCheckingAccess(false);
+        const cached = localStorage.getItem('cached_movies');
+        if (cached && JSON.parse(cached).some(m => m._id === id)) {
+          setLoading(false);
+        } else {
+          setTimeout(() => setLoading(false), 800);
+        }
       }
     };
 
@@ -190,12 +241,16 @@ export default function Movie() {
               Browse Categories
             </button>
 
-            <h1 className="text-xl md:text-2xl font-black text-white tracking-tighter uppercase leading-tight italic pl-2">{movie.title}</h1>
-
             <div className="relative aspect-video rounded-[2.5rem] overflow-hidden bg-[#000] border border-white/5 shadow-2xl group">
-              {videoData.url && hasAccess ? (
+              {checkingAccess ? (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-[#121212] to-[#050505]">
+                  <div className="w-10 h-10 border-4 border-red-600/30 border-t-red-600 rounded-full animate-spin"></div>
+                  <span className="text-xs text-gray-500 uppercase tracking-widest mt-4">Verifying access...</span>
+                </div>
+              ) : videoData.url && hasAccess ? (
                 <SecureVideoPlayer
                   key={movie._id}
+                  videoId={movie._id}
                   videoUrl={videoData.url}
                   videoType={videoData.type || 'direct'}
                   poster={movie.poster}
@@ -234,6 +289,8 @@ export default function Movie() {
                 </div>
               )}
             </div>
+
+            <h1 className="text-xl md:text-2xl font-black text-white tracking-tighter uppercase leading-tight italic pl-2">{movie.title}</h1>
 
             {/* Metadata Section */}
             <div className="flex flex-col md:flex-row justify-between items-start gap-6 p-2">

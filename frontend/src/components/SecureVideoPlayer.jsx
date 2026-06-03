@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 
-export default function SecureVideoPlayer({ videoUrl, videoType, poster, title, onDurationChange }) {
+export default function SecureVideoPlayer({ videoId, videoUrl, videoType, poster, title, onDurationChange }) {
   const playerRef = useRef(null);
   const containerRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -11,6 +11,12 @@ export default function SecureVideoPlayer({ videoUrl, videoType, poster, title, 
   const [showControls, setShowControls] = useState(true);
   const [isReady, setIsReady] = useState(false);
   const controlsTimeoutRef = useRef(null);
+  const handleKeyDownRef = useRef(null);
+  const [showResumeOverlay, setShowResumeOverlay] = useState(false);
+  const [resumeTime, setResumeTime] = useState(0);
+  const [countdown, setCountdown] = useState(4);
+  const countdownIntervalRef = useRef(null);
+  const lastSavedTimeRef = useRef(0);
 
   // Notify parent of duration changes
   useEffect(() => {
@@ -29,28 +35,34 @@ export default function SecureVideoPlayer({ videoUrl, videoType, poster, title, 
 
   const youtubeId = videoType === 'youtube' ? getYouTubeId(videoUrl) : null;
 
+  handleKeyDownRef.current = (e) => {
+    if (isReady && !showResumeOverlay) {
+      if (e.code === 'Space' || e.key === 'k' || e.key === 'K') {
+        e.preventDefault();
+        handlePlayPause();
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        skipTime(10);
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        skipTime(-10);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setVolume(prev => Math.min(1, prev + 0.1));
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setVolume(prev => Math.max(0, prev - 0.1));
+      } else if (e.key === 'f' || e.key === 'F') {
+        e.preventDefault();
+        handleFullscreen();
+      }
+    }
+  };
+
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (isReady) {
-        if (e.code === 'Space' || e.key === 'k' || e.key === 'K') {
-          e.preventDefault();
-          handlePlayPause();
-        } else if (e.key === 'ArrowRight') {
-          e.preventDefault();
-          skipTime(10);
-        } else if (e.key === 'ArrowLeft') {
-          e.preventDefault();
-          skipTime(-10);
-        } else if (e.key === 'ArrowUp') {
-          e.preventDefault();
-          setVolume(prev => Math.min(1, prev + 0.1));
-        } else if (e.key === 'ArrowDown') {
-          e.preventDefault();
-          setVolume(prev => Math.max(0, prev - 0.1));
-        } else if (e.key === 'f' || e.key === 'F') {
-          e.preventDefault();
-          handleFullscreen();
-        }
+      if (handleKeyDownRef.current) {
+        handleKeyDownRef.current(e);
       }
     };
 
@@ -58,7 +70,7 @@ export default function SecureVideoPlayer({ videoUrl, videoType, poster, title, 
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isReady]);
+  }, []);
 
   const clickTimeout = useRef(null);
 
@@ -143,7 +155,7 @@ export default function SecureVideoPlayer({ videoUrl, videoType, poster, title, 
 
   useEffect(() => {
     let interval;
-    if (isPlaying && videoType === 'youtube' && window.ytPlayer) {
+    if (isPlaying && videoType === 'youtube' && window.ytPlayer && !showResumeOverlay) {
       interval = setInterval(() => {
         if (window.ytPlayer.getCurrentTime) {
           setCurrentTime(window.ytPlayer.getCurrentTime());
@@ -151,7 +163,105 @@ export default function SecureVideoPlayer({ videoUrl, videoType, poster, title, 
       }, 500);
     }
     return () => clearInterval(interval);
-  }, [isPlaying, videoType]);
+  }, [isPlaying, videoType, showResumeOverlay]);
+
+  // Save progress in localStorage (throttled to once every 2 seconds)
+  useEffect(() => {
+    if (videoId && isReady && duration > 0 && currentTime > 0 && !showResumeOverlay) {
+      if (Math.abs(currentTime - lastSavedTimeRef.current) >= 2) {
+        const progressKey = 'video_progress';
+        const progress = JSON.parse(localStorage.getItem(progressKey) || '{}');
+        
+        // Save progress if it is between 5 seconds and 10 seconds before the end
+        if (currentTime > 5 && duration - currentTime > 10) {
+          progress[videoId] = currentTime;
+          lastSavedTimeRef.current = currentTime;
+        } else if (duration - currentTime <= 10) {
+          // If close to the end, clear progress so it starts from beginning next time
+          delete progress[videoId];
+          lastSavedTimeRef.current = 0;
+        }
+        localStorage.setItem(progressKey, JSON.stringify(progress));
+      }
+    }
+  }, [currentTime, isReady, duration, videoId, showResumeOverlay]);
+
+  // Check saved progress on mount/ready
+  useEffect(() => {
+    if (videoId && isReady) {
+      const progress = JSON.parse(localStorage.getItem('video_progress') || '{}');
+      const savedTime = progress[videoId];
+      if (savedTime && savedTime > 5) {
+        setResumeTime(savedTime);
+        setShowResumeOverlay(true);
+        setCountdown(4);
+      } else {
+        setShowResumeOverlay(false);
+      }
+    }
+  }, [videoId, isReady]);
+
+  // Countdown timer effect
+  useEffect(() => {
+    if (showResumeOverlay) {
+      countdownIntervalRef.current = setInterval(() => {
+        setCountdown(prev => {
+          if (prev <= 1) {
+            clearInterval(countdownIntervalRef.current);
+            handleResume();
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => {
+      if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+    };
+  }, [showResumeOverlay, resumeTime]);
+
+  const handleResume = () => {
+    if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+    setShowResumeOverlay(false);
+    
+    // Seek to resumeTime
+    if (videoType === 'youtube' && window.ytPlayer) {
+      window.ytPlayer.seekTo(resumeTime, true);
+      window.ytPlayer.playVideo();
+      setIsPlaying(true);
+    } else if (playerRef.current) {
+      playerRef.current.currentTime = resumeTime;
+      playerRef.current.play();
+      setIsPlaying(true);
+    }
+    setCurrentTime(resumeTime);
+    lastSavedTimeRef.current = resumeTime;
+  };
+
+  const handleRestart = () => {
+    if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+    setShowResumeOverlay(false);
+    
+    // Clear progress in localStorage
+    if (videoId) {
+      const progress = JSON.parse(localStorage.getItem('video_progress') || '{}');
+      delete progress[videoId];
+      localStorage.setItem('video_progress', JSON.stringify(progress));
+    }
+    
+    // Seek to 0
+    if (videoType === 'youtube' && window.ytPlayer) {
+      window.ytPlayer.seekTo(0, true);
+      window.ytPlayer.playVideo();
+      setIsPlaying(true);
+    } else if (playerRef.current) {
+      playerRef.current.currentTime = 0;
+      playerRef.current.play();
+      setIsPlaying(true);
+    }
+    setCurrentTime(0);
+    lastSavedTimeRef.current = 0;
+  };
 
   const handlePlayPause = () => {
     if (videoType === 'youtube' && window.ytPlayer) {
@@ -213,7 +323,24 @@ export default function SecureVideoPlayer({ videoUrl, videoType, poster, title, 
   };
 
   const skipTime = (seconds) => {
-    const newTime = Math.max(0, Math.min(currentTime + seconds, duration));
+    let current = currentTime;
+    let videoDuration = duration;
+
+    if (videoType === 'youtube' && window.ytPlayer) {
+      if (typeof window.ytPlayer.getCurrentTime === 'function') {
+        current = window.ytPlayer.getCurrentTime();
+      }
+      if (typeof window.ytPlayer.getDuration === 'function') {
+        videoDuration = window.ytPlayer.getDuration();
+      }
+    } else if (playerRef.current) {
+      current = playerRef.current.currentTime;
+      if (playerRef.current.duration) {
+        videoDuration = playerRef.current.duration;
+      }
+    }
+
+    const newTime = Math.max(0, Math.min(current + seconds, videoDuration));
 
     if (videoType === 'youtube' && window.ytPlayer) {
       window.ytPlayer.seekTo(newTime, true);
@@ -296,7 +423,7 @@ export default function SecureVideoPlayer({ videoUrl, videoType, poster, title, 
         )}
 
         {/* Big Centered Play Button (YouTube Logo Style) */}
-        {!isPlaying && isReady && (
+        {!isPlaying && isReady && !showResumeOverlay && (
           <div
             className="absolute inset-0 flex items-center justify-center z-20 bg-black/20 backdrop-blur-[2px] transition-all"
           >
@@ -372,6 +499,40 @@ export default function SecureVideoPlayer({ videoUrl, videoType, poster, title, 
           </div>
         </div>
       </div>
+
+      {/* Resume Playback Overlay */}
+      {showResumeOverlay && (
+        <div
+          className="absolute inset-0 z-50 bg-[#020202]/95 backdrop-blur-md flex items-center justify-center p-6 text-center animate-in fade-in duration-300 pointer-events-auto"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="max-w-md w-full space-y-6">
+            <div className="w-16 h-16 bg-red-600/10 border border-red-600/20 rounded-2xl flex items-center justify-center text-2xl mx-auto shadow-2xl animate-bounce">
+              🕒
+            </div>
+            <div className="space-y-2 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <h2 className="text-2xl font-black text-white uppercase tracking-tighter italic">Resume Playback?</h2>
+              <p className="text-gray-400 text-[10px] uppercase tracking-[0.15em] font-semibold">
+                You watched up to <span className="text-red-500 font-black">{formatTime(resumeTime)}</span> last time.
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center pt-2">
+              <button
+                onClick={handleResume}
+                className="px-8 py-4 bg-red-600 hover:bg-red-700 text-white font-black text-[11px] uppercase tracking-[0.2em] rounded-xl active:scale-95 transition-all shadow-xl shadow-red-900/40"
+              >
+                Continue ({countdown}s)
+              </button>
+              <button
+                onClick={handleRestart}
+                className="px-8 py-4 bg-white/5 border border-white/10 text-gray-300 hover:text-white hover:bg-white/10 font-black text-[11px] uppercase tracking-[0.2em] rounded-xl active:scale-95 transition-all"
+              >
+                Start From Beginning
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

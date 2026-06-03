@@ -8,8 +8,24 @@ import { API_URL } from '../config';
 export default function Category() {
   const { categoryName } = useParams();
   const navigate = useNavigate();
-  const [movies, setMovies] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [movies, setMovies] = useState(() => {
+    const cached = localStorage.getItem('cached_movies');
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      return parsed
+        .filter(m => m.category?.includes(decodeURIComponent(categoryName)))
+        .sort((a, b) => {
+          const aBatch = a.batchNo || "";
+          const bBatch = b.batchNo || "";
+          return aBatch.localeCompare(bBatch, undefined, { numeric: true, sensitivity: 'base' });
+        });
+    }
+    return [];
+  });
+  const [loading, setLoading] = useState(() => {
+    const cached = localStorage.getItem('cached_movies');
+    return !cached;
+  });
   const [userCategories, setUserCategories] = useState([]);
   const [currentPage, setCurrentPage] = useState(0);
 
@@ -38,6 +54,7 @@ export default function Category() {
           });
 
         setMovies(categoryMovies);
+        localStorage.setItem('cached_movies', JSON.stringify(response.data));
 
         // Get user's subscribed categories
         const user = localStorage.getItem('user');
@@ -48,7 +65,12 @@ export default function Category() {
       } catch (error) {
         console.error('Error fetching category movies:', error);
       } finally {
-        setTimeout(() => setLoading(false), 800);
+        const cached = localStorage.getItem('cached_movies');
+        if (cached) {
+          setLoading(false);
+        } else {
+          setTimeout(() => setLoading(false), 800);
+        }
       }
     };
 

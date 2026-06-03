@@ -7,14 +7,26 @@ import { API_URL } from '../config';
 
 export default function Home() {
   const navigate = useNavigate();
-  const [movies, setMovies] = useState([]);
-  const [featured, setFeatured] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [movies, setMovies] = useState(() => {
+    const cached = localStorage.getItem('cached_movies');
+    return cached ? JSON.parse(cached) : [];
+  });
+  const [featured, setFeatured] = useState(() => {
+    const cached = localStorage.getItem('cached_featured');
+    return cached ? JSON.parse(cached) : [];
+  });
+  const [loading, setLoading] = useState(() => {
+    const cachedMovies = localStorage.getItem('cached_movies');
+    return !cachedMovies;
+  });
   const [userCategories, setUserCategories] = useState([]);
   const [categoryScrollPositions, setCategoryScrollPositions] = useState({});
   const [featuredScrollPosition, setFeaturedScrollPosition] = useState(0);
   const [activeHeroIdx, setActiveHeroIdx] = useState(0);
-  const [categories, setCategories] = useState([]); // Categories from admin panel
+  const [categories, setCategories] = useState(() => {
+    const cached = localStorage.getItem('cached_categories');
+    return cached ? JSON.parse(cached) : [];
+  }); // Categories from admin panel
   const [currentUser, setCurrentUser] = useState(JSON.parse(localStorage.getItem('user') || 'null'));
 
   useEffect(() => {
@@ -32,20 +44,31 @@ export default function Home() {
         ]);
         // Show ALL video cards to everyone (Access control happens on Watch Page)
         setMovies(allMovies.data);
+        localStorage.setItem('cached_movies', JSON.stringify(allMovies.data));
 
         // Fallback: If no featured movies, use the latest movie as hero
+        let featuredList = [];
         if (featuredMovies.data && featuredMovies.data.length > 0) {
-          setFeatured(featuredMovies.data);
+          featuredList = featuredMovies.data;
         } else if (allMovies.data && allMovies.data.length > 0) {
-          setFeatured([allMovies.data[0]]);
+          featuredList = [allMovies.data[0]];
         } else {
-          setFeatured([]);
+          featuredList = [];
         }
+        setFeatured(featuredList);
+        localStorage.setItem('cached_featured', JSON.stringify(featuredList));
+
         setCategories(categoriesData.data);
+        localStorage.setItem('cached_categories', JSON.stringify(categoriesData.data));
       } catch (error) {
         console.error('Error fetching movies:', error);
       } finally {
-        setTimeout(() => setLoading(false), 800); // Small delay for smooth transition
+        const cached = localStorage.getItem('cached_movies');
+        if (cached) {
+          setLoading(false);
+        } else {
+          setTimeout(() => setLoading(false), 800);
+        }
       }
     };
 
